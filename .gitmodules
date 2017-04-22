@@ -1,0 +1,3 @@
+[submodule "services/thermometer/paho.mqtt.c"]
+	path = services/thermometer/paho.mqtt.c
+	url = https://github.com/eclipse/paho.mqtt.c.git
