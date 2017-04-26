@@ -35,11 +35,9 @@ static time_t my_clock_base = 0;
 
 struct coap_resource_t *time_resource = NULL;
 
-#define UNUSED_PARAM __attribute__ ((unused))
-
 /* SIGINT handler: set quit to 1 for graceful termination */
 static void
-handle_sigint(int signum UNUSED_PARAM) {
+handle_sigint(int signum) {
   quit = 1;
 }
 
@@ -47,12 +45,12 @@ handle_sigint(int signum UNUSED_PARAM) {
               "Copyright (C) 2010--2016 Olaf Bergmann <bergmann@tzi.org>\n\n"
 
 static void
-hnd_get_index(coap_context_t *ctx UNUSED_PARAM,
-              struct coap_resource_t *resource UNUSED_PARAM,
-              const coap_endpoint_t *local_interface UNUSED_PARAM,
-              coap_address_t *peer UNUSED_PARAM,
-              coap_pdu_t *request UNUSED_PARAM,
-              str *token UNUSED_PARAM,
+hnd_get_index(coap_context_t *ctx,
+              struct coap_resource_t *resource,
+              const coap_endpoint_t *local_interface,
+              coap_address_t *peer,
+              coap_pdu_t *request,
+              str *token,
               coap_pdu_t *response) {
   unsigned char buf[3];
 
@@ -70,12 +68,12 @@ hnd_get_index(coap_context_t *ctx UNUSED_PARAM,
 }
 
 static void
-hnd_put_echo(coap_context_t *ctx UNUSED_PARAM,
-              struct coap_resource_t *resource UNUSED_PARAM,
-              const coap_endpoint_t *local_interface UNUSED_PARAM,
-              coap_address_t *peer UNUSED_PARAM,
-              coap_pdu_t *request UNUSED_PARAM,
-              str *token UNUSED_PARAM,
+hnd_put_echo(coap_context_t *ctx,
+              struct coap_resource_t *resource,
+              const coap_endpoint_t *local_interface,
+              coap_address_t *peer,
+              coap_pdu_t *request,
+              str *token,
               coap_pdu_t *response) {
   unsigned char buf[3];
   size_t size;
@@ -104,7 +102,7 @@ hnd_put_echo(coap_context_t *ctx UNUSED_PARAM,
 static void
 hnd_get_time(coap_context_t  *ctx,
              struct coap_resource_t *resource,
-             const coap_endpoint_t *local_interface UNUSED_PARAM,
+             const coap_endpoint_t *local_interface,
              coap_address_t *peer,
              coap_pdu_t *request,
              str *token,
@@ -169,12 +167,12 @@ hnd_get_time(coap_context_t  *ctx,
 }
 
 static void
-hnd_put_time(coap_context_t *ctx UNUSED_PARAM,
-             struct coap_resource_t *resource UNUSED_PARAM,
-             const coap_endpoint_t *local_interface UNUSED_PARAM,
-             coap_address_t *peer UNUSED_PARAM,
+hnd_put_time(coap_context_t *ctx,
+             struct coap_resource_t *resource,
+             const coap_endpoint_t *local_interface,
+             coap_address_t *peer,
              coap_pdu_t *request,
-             str *token UNUSED_PARAM,
+             str *token,
              coap_pdu_t *response) {
   coap_tick_t t;
   size_t size;
@@ -206,13 +204,13 @@ hnd_put_time(coap_context_t *ctx UNUSED_PARAM,
 }
 
 static void
-hnd_delete_time(coap_context_t *ctx UNUSED_PARAM,
-                struct coap_resource_t *resource UNUSED_PARAM,
-                const coap_endpoint_t *local_interface UNUSED_PARAM,
-                coap_address_t *peer UNUSED_PARAM,
-                coap_pdu_t *request UNUSED_PARAM,
-                str *token UNUSED_PARAM,
-                coap_pdu_t *response UNUSED_PARAM) {
+hnd_delete_time(coap_context_t *ctx,
+                struct coap_resource_t *resource,
+                const coap_endpoint_t *local_interface,
+                coap_address_t *peer,
+                coap_pdu_t *request,
+                str *token,
+                coap_pdu_t *response) {
   my_clock_base = 0;    /* mark clock as "deleted" */
 
   /* type = request->hdr->type == COAP_MESSAGE_CON  */
