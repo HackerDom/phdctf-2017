@@ -1,14 +1,5 @@
 /* -*- Mode: C; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 * -*- */
 
-/* coap -- simple implementation of the Constrained Application Protocol (CoAP)
- *         as defined in RFC 7252
- *
- * Copyright (C) 2010--2016 Olaf Bergmann <bergmann@tzi.org>
- *
- * This file is part of the CoAP library libcoap. Please see README for terms
- * of use.
- */
-
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -44,17 +35,7 @@ static time_t my_clock_base = 0;
 
 struct coap_resource_t *time_resource = NULL;
 
-#ifndef WITHOUT_ASYNC
-/* This variable is used to mimic long-running tasks that require
- * asynchronous responses. */
-static coap_async_state_t *async = NULL;
-#endif /* WITHOUT_ASYNC */
-
-#ifdef __GNUC__
 #define UNUSED_PARAM __attribute__ ((unused))
-#else /* not a GCC */
-#define UNUSED_PARAM
-#endif /* GCC */
 
 /* SIGINT handler: set quit to 1 for graceful termination */
 static void
@@ -86,6 +67,38 @@ hnd_get_index(coap_context_t *ctx UNUSED_PARAM,
                   coap_encode_var_bytes(buf, 0x2ffff), buf);
 
   coap_add_data(response, strlen(INDEX), (unsigned char *)INDEX);
+}
+
+static void
+hnd_put_echo(coap_context_t *ctx UNUSED_PARAM,
+              struct coap_resource_t *resource UNUSED_PARAM,
+              const coap_endpoint_t *local_interface UNUSED_PARAM,
+              coap_address_t *peer UNUSED_PARAM,
+              coap_pdu_t *request UNUSED_PARAM,
+              str *token UNUSED_PARAM,
+              coap_pdu_t *response) {
+  unsigned char buf[3];
+  size_t size;
+  unsigned char *data;
+
+  resource->dirty = 1;
+
+  /* coap_get_data() sets size to 0 on error */
+  (void)coap_get_data(request, &size, &data);
+
+  if (size == 0) {
+    response->hdr->code = COAP_RESPONSE_CODE(400);
+  }
+  else {
+    response->hdr->code = COAP_RESPONSE_CODE(205);
+    coap_add_option(response,
+                    COAP_OPTION_CONTENT_TYPE,
+                    coap_encode_var_bytes(buf, COAP_MEDIATYPE_TEXT_PLAIN), buf);
+    coap_add_option(response,
+                    COAP_OPTION_MAXAGE,
+                    coap_encode_var_bytes(buf, 0x2ffff), buf);
+    coap_add_data(response, size, data);
+  }
 }
 
 static void
@@ -206,89 +219,15 @@ hnd_delete_time(coap_context_t *ctx UNUSED_PARAM,
   /*   ? COAP_MESSAGE_ACK : COAP_MESSAGE_NON; */
 }
 
-#ifndef WITHOUT_ASYNC
-static void
-hnd_get_async(coap_context_t *ctx,
-              struct coap_resource_t *resource UNUSED_PARAM,
-              const coap_endpoint_t *local_interface UNUSED_PARAM,
-              coap_address_t *peer,
-              coap_pdu_t *request,
-              str *token UNUSED_PARAM,
-              coap_pdu_t *response) {
-  coap_opt_iterator_t opt_iter;
-  coap_opt_t *option;
-  unsigned long delay = 5;
-  size_t size;
-
-  if (async) {
-    if (async->id != request->hdr->id) {
-      coap_opt_filter_t f;
-      coap_option_filter_clear(f);
-      response->hdr->code = COAP_RESPONSE_CODE(503);
-    }
-    return;
-  }
-
-  option = coap_check_option(request, COAP_OPTION_URI_QUERY, &opt_iter);
-  if (option) {
-    unsigned char *p = COAP_OPT_VALUE(option);
-
-    delay = 0;
-    for (size = COAP_OPT_LENGTH(option); size; --size, ++p)
-      delay = delay * 10 + (*p - '0');
-  }
-
-  async = coap_register_async(ctx,
-                              peer,
-                              request,
-                              COAP_ASYNC_SEPARATE | COAP_ASYNC_CONFIRM,
-                              (void *)(COAP_TICKS_PER_SECOND * delay));
-}
-
-static void
-check_async(coap_context_t *ctx,
-            const coap_endpoint_t *local_if,
-            coap_tick_t now) {
-  coap_pdu_t *response;
-  coap_async_state_t *tmp;
-
-  size_t size = sizeof(coap_hdr_t) + 13;
-
-  if (!async || now < async->created + (unsigned long)async->appdata)
-    return;
-
-  response = coap_pdu_init(async->flags & COAP_ASYNC_CONFIRM
-             ? COAP_MESSAGE_CON
-             : COAP_MESSAGE_NON,
-             COAP_RESPONSE_CODE(205), 0, size);
-  if (!response) {
-    debug("check_async: insufficient memory, we'll try later\n");
-    async->appdata =
-      (void *)((unsigned long)async->appdata + 15 * COAP_TICKS_PER_SECOND);
-    return;
-  }
-
-  response->hdr->id = coap_new_message_id(ctx);
-
-  if (async->tokenlen)
-    coap_add_token(response, async->tokenlen, async->token);
-
-  coap_add_data(response, 4, (unsigned char *)"done");
-
-  if (coap_send(ctx, local_if, &async->peer, response) == COAP_INVALID_TID) {
-    debug("check_async: cannot send response for message %d\n",
-    response->hdr->id);
-  }
-  coap_delete_pdu(response);
-  coap_remove_async(ctx, async->id, &tmp);
-  coap_free_async(async);
-  async = NULL;
-}
-#endif /* WITHOUT_ASYNC */
-
 static void
 init_resources(coap_context_t *ctx) {
   coap_resource_t *r;
+
+  r = coap_resource_init((unsigned char *)"echo", 4, 0);
+  coap_register_handler(r, COAP_REQUEST_PUT, hnd_put_echo);
+  coap_add_attr(r, (unsigned char *)"ct", 2, (unsigned char *)"0", 1, 0);
+  coap_add_attr(r, (unsigned char *)"title", 5, (unsigned char *)"\"General Info\"", 14, 0);
+  coap_add_resource(ctx, r);
 
   r = coap_resource_init(NULL, 0, 0);
   coap_register_handler(r, COAP_REQUEST_GET, hnd_get_index);
@@ -313,14 +252,6 @@ init_resources(coap_context_t *ctx) {
 
   coap_add_resource(ctx, r);
   time_resource = r;
-
-#ifndef WITHOUT_ASYNC
-  r = coap_resource_init((unsigned char *)"async", 5, 0);
-  coap_register_handler(r, COAP_REQUEST_GET, hnd_get_async);
-
-  coap_add_attr(r, (unsigned char *)"ct", 2, (unsigned char *)"0", 1, 0);
-  coap_add_resource(ctx, r);
-#endif /* WITHOUT_ASYNC */
 }
 
 static void
@@ -335,7 +266,6 @@ usage( const char *program, const char *version) {
      "(c) 2010,2011,2015 Olaf Bergmann <bergmann@tzi.org>\n\n"
      "usage: %s [-A address] [-p port]\n\n"
      "\t-A address\tinterface address to bind to\n"
-     "\t-g group\tjoin the given multicast group\n"
      "\t-p port\t\tlisten on specified port\n"
      "\t-v num\t\tverbosity level (default: 3)\n",
      program, version, program );
@@ -383,70 +313,9 @@ get_context(const char *node, const char *port) {
   return ctx;
 }
 
-static int
-join(coap_context_t *ctx, char *group_name){
-  struct ipv6_mreq mreq;
-  struct addrinfo   *reslocal = NULL, *resmulti = NULL, hints, *ainfo;
-  int result = -1;
-
-  /* we have to resolve the link-local interface to get the interface id */
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_INET6;
-  hints.ai_socktype = SOCK_DGRAM;
-
-  result = getaddrinfo("::", NULL, &hints, &reslocal);
-  if (result < 0) {
-    fprintf(stderr, "join: cannot resolve link-local interface: %s\n",
-            gai_strerror(result));
-    goto finish;
-  }
-
-  /* get the first suitable interface identifier */
-  for (ainfo = reslocal; ainfo != NULL; ainfo = ainfo->ai_next) {
-    if (ainfo->ai_family == AF_INET6) {
-      mreq.ipv6mr_interface =
-                ((struct sockaddr_in6 *)ainfo->ai_addr)->sin6_scope_id;
-      break;
-    }
-  }
-
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_INET6;
-  hints.ai_socktype = SOCK_DGRAM;
-
-  /* resolve the multicast group address */
-  result = getaddrinfo(group_name, NULL, &hints, &resmulti);
-
-  if (result < 0) {
-    fprintf(stderr, "join: cannot resolve multicast address: %s\n",
-            gai_strerror(result));
-    goto finish;
-  }
-
-  for (ainfo = resmulti; ainfo != NULL; ainfo = ainfo->ai_next) {
-    if (ainfo->ai_family == AF_INET6) {
-      mreq.ipv6mr_multiaddr =
-                ((struct sockaddr_in6 *)ainfo->ai_addr)->sin6_addr;
-      break;
-    }
-  }
-
-  result = setsockopt(ctx->sockfd, IPPROTO_IPV6, IPV6_JOIN_GROUP,
-          (char *)&mreq, sizeof(mreq));
-  if (result < 0)
-    perror("join: setsockopt");
-
- finish:
-  freeaddrinfo(resmulti);
-  freeaddrinfo(reslocal);
-
-  return result;
-}
-
 int
 main(int argc, char **argv) {
   coap_context_t  *ctx;
-  char *group = NULL;
   fd_set readfds;
   struct timeval tv, *timeout;
   int result;
@@ -459,14 +328,11 @@ main(int argc, char **argv) {
 
   clock_offset = time(NULL);
 
-  while ((opt = getopt(argc, argv, "A:g:p:v:")) != -1) {
+  while ((opt = getopt(argc, argv, "A:p:v:")) != -1) {
     switch (opt) {
     case 'A' :
       strncpy(addr_str, optarg, NI_MAXHOST-1);
       addr_str[NI_MAXHOST - 1] = '\0';
-      break;
-    case 'g' :
-      group = optarg;
       break;
     case 'p' :
       strncpy(port_str, optarg, NI_MAXSERV-1);
@@ -488,10 +354,6 @@ main(int argc, char **argv) {
     return -1;
 
   init_resources(ctx);
-
-  /* join multicast group if requested at command line */
-  if (group)
-    join(ctx, group);
 
   signal(SIGINT, handle_sigint);
 
@@ -532,11 +394,6 @@ main(int argc, char **argv) {
         time_resource->dirty = 1;
       }
     }
-
-#ifndef WITHOUT_ASYNC
-    /* check if we have to send asynchronous responses */
-    check_async(ctx, ctx->endpoint, now);
-#endif /* WITHOUT_ASYNC */
 
 #ifndef WITHOUT_OBSERVE
     /* check if we have to send observe notifications */
