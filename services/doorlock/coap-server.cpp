@@ -16,6 +16,8 @@
 #include <errno.h>
 #include <signal.h>
 
+#include <algorithm>
+
 extern "C" {
 #include "coap_config.h"
 #include "resource.h"
@@ -23,10 +25,6 @@ extern "C" {
 }
 
 #define COAP_RESOURCE_CHECK_TIME 2
-
-#ifndef min
-#define min(a,b) ((a) < (b) ? (a) : (b))
-#endif
 
 /* temporary storage for dynamic resource representations */
 static int quit = 0;
@@ -150,10 +148,10 @@ hnd_get_time(coap_context_t  *ctx,
     if (request != NULL
         && (option = coap_check_option(request, COAP_OPTION_URI_QUERY, &opt_iter))
         && memcmp(COAP_OPT_VALUE(option), "ticks",
-        min(5, COAP_OPT_LENGTH(option))) == 0) {
+        std::min((unsigned short)5, COAP_OPT_LENGTH(option))) == 0) {
           /* output ticks */
           len = snprintf((char *)buf,
-                         min(sizeof(buf),
+                         std::min(sizeof(buf),
                              response->max_size - response->length),
                              "%u", (unsigned int)now);
           coap_add_data(response, len, buf);
@@ -162,7 +160,7 @@ hnd_get_time(coap_context_t  *ctx,
       struct tm *tmp;
       tmp = gmtime(&now);
       len = strftime((char *)buf,
-                     min(sizeof(buf),
+                     std::min(sizeof(buf),
                      response->max_size - response->length),
                      "%b %d %H:%M:%S", tmp);
       coap_add_data(response, len, buf);
