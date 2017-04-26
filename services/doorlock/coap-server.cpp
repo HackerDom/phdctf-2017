@@ -16,9 +16,11 @@
 #include <errno.h>
 #include <signal.h>
 
+extern "C" {
 #include "coap_config.h"
 #include "resource.h"
 #include "coap.h"
+}
 
 #define COAP_RESOURCE_CHECK_TIME 2
 
