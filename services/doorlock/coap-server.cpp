@@ -75,7 +75,6 @@ hnd_put_echo(coap_context_t *ctx,
               coap_pdu_t *request,
               str *token,
               coap_pdu_t *response) {
-  unsigned char buf[3];
   size_t size;
   unsigned char *data;
 
@@ -88,6 +87,7 @@ hnd_put_echo(coap_context_t *ctx,
     response->hdr->code = COAP_RESPONSE_CODE(400);
   }
   else {
+    unsigned char buf[3];
     response->hdr->code = COAP_RESPONSE_CODE(205);
     coap_add_option(response,
                     COAP_OPTION_CONTENT_TYPE,
@@ -108,9 +108,7 @@ hnd_get_time(coap_context_t  *ctx,
              str *token,
              coap_pdu_t *response) {
   coap_opt_iterator_t opt_iter;
-  coap_opt_t *option;
   unsigned char buf[40];
-  size_t len;
   time_t now;
   coap_tick_t t;
 
@@ -138,11 +136,12 @@ hnd_get_time(coap_context_t  *ctx,
                   coap_encode_var_bytes(buf, 0x01), buf);
 
   if (my_clock_base) {
-
+    size_t len;
     /* calculate current time */
     coap_ticks(&t);
     now = my_clock_base + (t / COAP_TICKS_PER_SECOND);
 
+    coap_opt_t *option;
     if (request != NULL
         && (option = coap_check_option(request, COAP_OPTION_URI_QUERY, &opt_iter))
         && memcmp(COAP_OPT_VALUE(option), "ticks",
@@ -316,9 +315,7 @@ main(int argc, char **argv) {
   coap_context_t  *ctx;
   fd_set readfds;
   struct timeval tv, *timeout;
-  int result;
   coap_tick_t now;
-  coap_queue_t *nextpdu;
   char addr_str[NI_MAXHOST] = "::";
   char port_str[NI_MAXSERV] = "5683";
   int opt;
@@ -359,7 +356,7 @@ main(int argc, char **argv) {
     FD_ZERO(&readfds);
     FD_SET( ctx->sockfd, &readfds );
 
-    nextpdu = coap_peek_next( ctx );
+    coap_queue_t * nextpdu = coap_peek_next( ctx );
 
     coap_ticks(&now);
     while (nextpdu && nextpdu->t <= now - ctx->sendqueue_basetime) {
@@ -377,7 +374,7 @@ main(int argc, char **argv) {
       tv.tv_sec = COAP_RESOURCE_CHECK_TIME;
       timeout = &tv;
     }
-    result = select( FD_SETSIZE, &readfds, 0, 0, timeout );
+    int result = select( FD_SETSIZE, &readfds, 0, 0, timeout );
 
     if ( result < 0 ) {         /* error */
       if (errno != EINTR)
