@@ -1,0 +1,215 @@
+<style>
+* {
+  .box-sizing(border-box);
+}
+
+body {
+    background-color: #c19d67;
+    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    font-size: 14px;
+    line-height: 1.42857143;
+
+    color: white;
+    margin: 0;
+}
+
+h1 {
+  font-size: 36px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: inherit;
+    font-weight: 500;
+    line-height: 1.1;
+    color: inherit;
+}
+
+input {
+  font: inherit;
+  line-height: normal;
+  width: 100px;
+  padding: 5px;
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  padding: 5px;
+  cursor: pointer;
+}
+
+.fullwidth {
+  float: left;
+  width: 100%;
+}
+
+.additions {
+  width: 300px;
+  padding: 0px 0px 20px 10px;
+  /*margin: 20px 0px 20px 10px;*/
+}
+
+.brew {
+  width: 300px;
+  padding: 0px 0px 10px 10px;
+  text-align: center;
+}
+
+.brew-button-panel {
+  display: inline-block;
+  /*width: 40%;*/
+  /*margin: 0 auto;*/
+}
+
+.step {
+  width: 300px;
+  padding: 0px 0px 0px 10px;
+  margin: 20px 10px 10px 10px;
+}
+
+.pot-info {
+  padding-bottom: 40px;
+}
+
+.addition {
+  float: right;
+}
+
+</style>
+
+<!-- Latest compiled and minified CSS -->
+<!-- <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous"> -->
+
+<script>
+function updateStatus() {
+  pot = document.getElementById("input-pot").value
+
+  var client = new XMLHttpRequest();
+  client.open("PROPFIND", "/pot-" + pot);
+  client.setRequestHeader("Content-Type", "message/coffeepot");
+
+  client.onreadystatechange = function() {
+    if (client.readyState != 4) return;
+
+    rawResult = document.getElementById("pot-raw")
+
+    if (client.status != 200) {
+      rawResult.innerText = client.status + ': ' + client.statusText;
+    } else {
+      rawResult.innerText = client.responseText;
+    }
+  }
+  client.send();
+}
+
+function sendBrewRequest(pot, cmd) {
+  var client = new XMLHttpRequest();
+  client.open("BREW", "/pot-" + pot);
+  client.setRequestHeader("Content-Type", "message/coffeepot");
+
+  var acceptAdditions = "";
+  acceptAdditions += "Whole-milk;" + document.getElementById("input-milk").value + ","
+  acceptAdditions += "Almond;" + document.getElementById("input-almond").value + ","
+  acceptAdditions += "Whisky;" + document.getElementById("input-whisky").value + ","
+  acceptAdditions += "Rum;" + document.getElementById("input-rum").value
+  acceptAdditions += "Flag;" + document.getElementById("input-flag").value
+
+  client.setRequestHeader("Accept-Additions", acceptAdditions)
+
+  client.onreadystatechange = function() {
+    if (client.readyState != 4) return;
+
+    brewResult = document.getElementById("brew-result")
+
+    if (client.status != 200) {
+      // brewResult.innerText = client.status + ': ' + client.statusText;
+    // } else {
+      // brewResult.innerText = client.responseText;
+    }
+  }
+
+  client.send(cmd);
+}
+
+function brewStartPressed() {
+  pot = document.getElementById("input-pot")
+
+  sendBrewRequest(pot.value, "start")
+  return false
+}
+
+function brewStopPressed() {
+  pot = document.getElementById("input-pot")
+
+  sendBrewRequest(pot.value, "stop")
+  return false
+}
+
+
+</script>
+
+<div class="step">
+  <h1>
+    &#x2615; Coffee pot  &#x2615;
+  </h1>
+</div>
+
+<div class="step">
+  STEP 1. Choose pot: <input id="input-pot" type="number" name="pot" value=1 min=0 >
+</div>
+
+<div class="step pot-info">
+  POT INFORMATION
+
+  <div class="fullwidth">
+  State: NEW
+  </div>
+  <div class="fullwidth">
+  Temperature: 20&#176;C
+  </div>
+</div>
+
+<div class="step">
+  STEP 2. Choose additions:
+</div>
+
+<div class="additions fullwidth">
+  <!-- <div class="fullwidth"> -->
+    <!-- &#x1F95B; -->
+    <div class="addition">Milk 
+      <input id="input-milk" type="number" name="pot" value=0 min=0>
+      <button>+1</button>
+    </div>
+    <div class="addition">
+      Almond <input id="input-almond" type="number" name="pot" value=0 min=0>
+      <button>+1</button>
+    </div>
+    <div class="addition">
+      Whisky <input id="input-whisky" type="number" name="pot" value=0 min=0>
+      <button>+1</button>
+    </div>
+    <div class="addition">
+      Rum <input id="input-rum" type="number" name="pot" value=10 min=10>
+      <button>+1</button>
+    </div>
+    <div class="addition">
+        &#x2691; <input id="input-flag" type="text" name="pot" value=1234ABCD= >
+      <button disabled>+1</button>
+    </div>
+  <!-- </div> -->
+</div>
+
+<div class="step"> 
+  STEP 3. BREW
+</div>
+
+<div class="brew">
+  <div class="brew-button-panel">
+    <button onclick="brewStartPressed()">START</button>
+    <button onclick="brewStopPressed()">STOP</button>
+    <button onclick="updateStatus()">UPDATE</button>
+  </div>
+</div class="step"> 
+
+<!-- <div id="brew-result"> </div> -->
+<div id="pot-raw"> </div>
