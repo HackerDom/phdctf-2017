@@ -1,0 +1,7 @@
+This is just HTTP<--CGI-->PROGRAM gateway.
+
+Original version can be found at https://github.com/cesanta/mongoose.
+
+This is the hardened version with some 0days fixed.
+
+Don't spend time on this code.
