@@ -46,7 +46,8 @@ button {
 .additions {
   width: 300px;
   padding: 0px 0px 20px 10px;
-  /*margin: 20px 0px 20px 10px;*/
+
+  margin: 0px 0px 20px -10px;
 }
 
 .brew {
@@ -68,7 +69,7 @@ button {
 }
 
 .pot-info {
-  padding-bottom: 40px;
+  padding-bottom: 20px;
 }
 
 .addition {
@@ -92,11 +93,51 @@ function updateStatus() {
     if (client.readyState != 4) return;
 
     rawResult = document.getElementById("pot-raw")
+    
+    pot_id = document.getElementById("pot-id")
+    pot_state = document.getElementById("pot-state")
+    pot_temperature = document.getElementById("pot-temperature")
 
-    if (client.status != 200) {
-      rawResult.innerText = client.status + ': ' + client.statusText;
-    } else {
+    pot_id.innerText = pot
+
+    elements = [["input-milk", "Whole-milk", 0], ["input-almond", "Almond", 0],
+                ["input-whisky", "Whisky", 0], ["input-rum", "Rum", 10],
+                ["input-flag", "Flag", "1234ABCD="], ["pot-state", "State", "NEW"],
+                ["pot-temperature", "Temperature", 20]]
+
+    if (client.status == 200) {
+      if (client.responseText.length == 0) {
+        // pot_state.innerText = "NEW"
+        // pot_temperature.innerText = "20"
+
+        elements.forEach(function (item, i, arr) {
+          document.getElementById(item[0]).value = item[2]
+          document.getElementById(item[0]).innerText = item[2]
+          document.getElementById(item[0]).disabled = false
+        })        
+
+      } else {
+        pot_state.innerText = "BREWING"
+        pot_temperature.innerText = "30"
+
+        var fields = {}
+
+        client.responseText.split("\n").forEach(function (item, i, arr) {
+          var comps = item.split(":")
+          fields[comps[0]]=comps[1]
+        })
+
+        elements.forEach(function (item, i, arr) {
+          document.getElementById(item[0]).value = fields[item[1]]
+          document.getElementById(item[0]).innerText = fields[item[1]]
+          document.getElementById(item[0]).disabled = true
+        })
+
+        setTimeout(updateStatus, 5000)
+      }
       rawResult.innerText = client.responseText;
+    } else {
+      rawResult.innerText = client.status + ': ' + client.statusText;
     }
   }
   client.send();
@@ -111,7 +152,7 @@ function sendBrewRequest(pot, cmd) {
   acceptAdditions += "Whole-milk;" + document.getElementById("input-milk").value + ","
   acceptAdditions += "Almond;" + document.getElementById("input-almond").value + ","
   acceptAdditions += "Whisky;" + document.getElementById("input-whisky").value + ","
-  acceptAdditions += "Rum;" + document.getElementById("input-rum").value
+  acceptAdditions += "Rum;" + document.getElementById("input-rum").value + ","
   acceptAdditions += "Flag;" + document.getElementById("input-flag").value
 
   client.setRequestHeader("Accept-Additions", acceptAdditions)
@@ -122,10 +163,11 @@ function sendBrewRequest(pot, cmd) {
     brewResult = document.getElementById("brew-result")
 
     if (client.status != 200) {
-      // brewResult.innerText = client.status + ': ' + client.statusText;
-    // } else {
-      // brewResult.innerText = client.responseText;
+      brewResult.innerText = client.status + ': ' + client.statusText;
+    } else {
+      brewResult.innerText = client.responseText;
     }
+    updateStatus()
   }
 
   client.send(cmd);
@@ -139,14 +181,13 @@ function brewStartPressed() {
 }
 
 function brewStopPressed() {
-  pot = document.getElementById("input-pot")
-
-  sendBrewRequest(pot.value, "stop")
+  alert("Nope")
   return false
 }
 
-
 </script>
+
+<body onload="updateStatus()">
 
 <div class="step">
   <h1>
@@ -156,17 +197,14 @@ function brewStopPressed() {
 
 <div class="step">
   STEP 1. Choose pot: <input id="input-pot" type="number" name="pot" value=1 min=0 >
+  <button onclick="updateStatus()">SET</button>
 </div>
 
-<div class="step pot-info">
-  POT INFORMATION
+<div class="step pot-info fullwidth">
+  POT <span id="pot-id"> </span> INFORMATION<br>
 
-  <div class="fullwidth">
-  State: NEW
-  </div>
-  <div class="fullwidth">
-  Temperature: 20&#176;C
-  </div>
+  State: <span id="pot-state">UNKNOWN</span><br>
+  Temperature: <span id="pot-temperature"> -273.15</span>&#176;C
 </div>
 
 <div class="step">
@@ -177,23 +215,23 @@ function brewStopPressed() {
   <!-- <div class="fullwidth"> -->
     <!-- &#x1F95B; -->
     <div class="addition">Milk 
-      <input id="input-milk" type="number" name="pot" value=0 min=0>
+      <input id="input-milk" type="number" name="pot" min=0>
       <button>+1</button>
     </div>
     <div class="addition">
-      Almond <input id="input-almond" type="number" name="pot" value=0 min=0>
+      Almond <input id="input-almond" type="number" name="pot" min=0>
       <button>+1</button>
     </div>
     <div class="addition">
-      Whisky <input id="input-whisky" type="number" name="pot" value=0 min=0>
+      Whisky <input id="input-whisky" type="number" name="pot" min=0>
       <button>+1</button>
     </div>
     <div class="addition">
-      Rum <input id="input-rum" type="number" name="pot" value=10 min=10>
+      Rum <input id="input-rum" type="number" name="pot" min=10>
       <button>+1</button>
     </div>
     <div class="addition">
-        &#x2691; <input id="input-flag" type="text" name="pot" value=1234ABCD= >
+        &#x2691; <input id="input-flag" type="text" name="pot" >
       <button disabled>+1</button>
     </div>
   <!-- </div> -->
@@ -207,9 +245,11 @@ function brewStopPressed() {
   <div class="brew-button-panel">
     <button onclick="brewStartPressed()">START</button>
     <button onclick="brewStopPressed()">STOP</button>
-    <button onclick="updateStatus()">UPDATE</button>
+    <!-- <button ">UPDATE</button> -->
   </div>
-</div class="step"> 
+</div class="step">
 
-<!-- <div id="brew-result"> </div> -->
+<div id="brew-result"> </div>
 <div id="pot-raw"> </div>
+
+</body>
