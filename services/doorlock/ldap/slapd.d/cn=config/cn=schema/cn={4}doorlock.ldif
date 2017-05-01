@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE - DO NOT EDIT!! Use ldapmodify.
-# CRC32 f65f85b7
+# CRC32 76e9165b
 dn: cn={4}doorlock
 objectClass: olcSchemaConfig
 cn: {4}doorlock
@@ -19,13 +19,14 @@ olcAttributeTypes: {4}( 1.3.6.1.4.1.99.99.1.5 NAME 'cardOwner' DESC 'RFID Ac
 olcAttributeTypes: {5}( 1.3.6.1.4.1.99.99.1.6 NAME 'timestamp' DESC 'Timesta
  mp' EQUALITY generalizedTimeMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.24 )
 olcObjectClasses: {0}( 1.3.6.1.4.1.99.99.2.1 NAME 'lockObject' DESC 'Door Lo
- ck Object' SUP top AUXILIARY MUST lockModel MAY timestamp )
+ ck Object' SUP top AUXILIARY MUST lockModel MAY ( lockFloor $ lockRoom $ ti
+ mestamp ) )
 olcObjectClasses: {1}( 1.3.6.1.4.1.99.99.2.2 NAME 'cardObject' DESC 'Access 
  Card Object' SUP top AUXILIARY MUST cardTag MAY ( cardOwner $ timestamp ) )
 structuralObjectClass: olcSchemaConfig
-entryUUID: 7237b00c-c2eb-1036-8d5a-5742fa57f4f3
+entryUUID: a651b896-c2ec-1036-9daa-8d3e150c24cc
 creatorsName: cn=config
-createTimestamp: 20170501185510Z
-entryCSN: 20170501185510.670718Z#000000#000#000000
+createTimestamp: 20170501190347Z
+entryCSN: 20170501190347.576608Z#000000#000#000000
 modifiersName: cn=config
-modifyTimestamp: 20170501185510Z
+modifyTimestamp: 20170501190347Z
