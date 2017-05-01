@@ -1497,7 +1497,7 @@ static void mg_cgi_ev_handler(struct mg_connection *cgi_nc, int ev,
         int len = mg_http_get_request_len(io->buf, io->len);
 
         if (len == 0) break;
-        if (len < 0 || io->len > MG_MAX_HTTP_REQUEST_SIZE) {
+        if (len < 0 || io->len > MG_MAX_HTTP_REPLY_SIZE) {
           cgi_nc->flags |= MG_F_CLOSE_IMMEDIATELY;
           mg_http_send_error(nc, 500, "Bad headers");
         } else {

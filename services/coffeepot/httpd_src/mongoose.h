@@ -158,7 +158,8 @@ struct mg_connection *mg_bind(struct mg_mgr *, const char *,
 #define MG_SOCK_STRINGIFY_REMOTE 4
 
 #define MG_MAX_HTTP_HEADERS 20
-#define MG_MAX_HTTP_REQUEST_SIZE 4092
+#define MG_MAX_HTTP_REQUEST_SIZE 65536
+#define MG_MAX_HTTP_REPLY_SIZE 65536
 #define MG_CGI_ENVIRONMENT_SIZE 8192
 
 /* HTTP message */
