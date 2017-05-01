@@ -9,26 +9,36 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: kooj2ahj0eelaipeicahquiGehahsho1
       MYSQL_DATABASE: mqtt
-      MYSQL_USER: mqtt_broker
-      MYSQL_PASSWORD: UFRzFk2Lw5dd9h4u
+  mosquitto-db-init:
+    build: mosquitto-db-init
+    image: mosquitto-db-init
+    container_name: mosquitto-db-init
+    depends_on:
+      - mqtt-db
+    links:
+      - mqtt-db
+    environment:
+      MYSQL_ROOT_PASSWORD: kooj2ahj0eelaipeicahquiGehahsho1
+    volumes:
+      - ./mosquitto-db-init/scripts:/scripts
+    command: bash -c "wait-for-it.sh -t 0 mqtt-db:3306 -- mysql --host=mqtt-db --port=3306 --user=root --password=kooj2ahj0eelaipeicahquiGehahsho1 mqtt < /scripts/init-db.sql"
   mqtt-broker:
+    build: mosquitto
     image: mosquitto
     hostname: mqtt-broker
     container_name: mqtt-broker
     depends_on:
       - mqtt-db
+      - mosquitto-db-init
     ports:
       - "1883:1883"
     links:
       - mqtt-db
-    environment:
-      DB_USER: mqtt
-      DB_PASSWORD: UFRzFk2Lw5dd9h4u
     command: ["wait-for-it.sh", "-t", "0", "mqtt-db:3306", "--", "mosquitto", "-v", "-c", "/etc/mosquitto/mosquitto.conf"]
-  sensor:
-    image: thermometer-sensor
-    hostname: sensor
-    container_name: sensor
-    depends_on:
-      - mqtt-broker
-    command: ["wait-for-it.sh", "-t", "0", "mqtt-broker:1883", "--", "/usr/bin/thermometer"]
+#  sensor:
+#    image: thermometer-sensor
+#    hostname: sensor
+#    container_name: sensor
+#    depends_on:
+#      - mqtt-broker
+#    command: ["wait-for-it.sh", "-t", "0", "mqtt-broker:1883", "--", "/usr/bin/thermometer"]
