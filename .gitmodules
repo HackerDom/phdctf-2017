@@ -16,3 +16,6 @@
 [submodule "services/thermometer/mosquitto-db-init/wait-for-it"]
 	path = services/thermometer/mosquitto-db-init/wait-for-it
 	url = https://github.com/vishnubob/wait-for-it.git
+[submodule "services/thermometer/tests/mqtt-anonymous-auth/paho.mqtt.c"]
+	path = services/thermometer/tests/mqtt-anonymous-auth/paho.mqtt.c
+	url = https://github.com/eclipse/paho.mqtt.c.git
