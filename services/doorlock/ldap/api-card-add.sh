@@ -9,21 +9,19 @@ then
     exit 1
 fi
 
-LOCK_ID=$1
-CARD_ID=$2        # FLAG!
-CARD_DATA=$3
+LOCK_ID=$1              # 1st part of FLAG_ID (got on register)
+CARD_ID=$2              # 2nd part of FLAG_ID (generated at checker)
+CARD_DATA=$3            # FLAG
 
-LOCK_CN=`ldapsearch -h $LDAP_HOST -D $LDAP_USER -w $LDAP_PASS -b $LDAP_ROOT -LLL lockId=$LOCK_ID | grep cn: | cut -d' ' -f2`
-if [ -z $LOCK_CN ]
+FOUND=`ldapsearch -h $LDAP_HOST -D $LDAP_USER -w $LDAP_PASS -b $LDAP_ROOT -LLL lockId=$LOCK_ID | grep cn: | wc -l`
+if [ $FOUND -eq 0 ]
 then
   echo LOCK NOT FOUND
   exit 0
 fi
 
-CARD_CN=`< /dev/urandom tr -dc 0-9 | head -c3` # Calc max?
-
 cat << EOF | ldapadd -h $LDAP_HOST -D $LDAP_USER -w $LDAP_PASS
-dn: cn=$CARD_CN,cn=$LOCK_CN,cn=locks,$LDAP_ROOT
+dn: cn=$CARD_ID,cn=$LOCK_ID,cn=locks,$LDAP_ROOT
 objectClass: top
 objectClass: device
 objectClass: cardObject
@@ -31,4 +29,4 @@ cardId:      $CARD_ID
 cardData:    $CARD_DATA
 EOF
 
-echo "Added card (CN=$CARD_CN) to lock $LOCK_ID"
+echo "Added card (CN=$CARD_ID) to lock $LOCK_ID"
