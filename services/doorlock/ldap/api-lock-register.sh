@@ -15,8 +15,8 @@ dn: cn=$LOCK_ID,cn=locks,$LDAP_ROOT
 objectClass: top
 objectClass: device
 objectClass: lockObject
-lockId:      $LOCK_ID
 lockModel:   Secure Lock Model $LOCK_MODEL
+timestamp:   199412161032Z
 EOF
 
 echo "Created new lock with lockId: $LOCK_ID"

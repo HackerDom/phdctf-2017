@@ -1,5 +1,5 @@
 # AUTO-GENERATED FILE - DO NOT EDIT!! Use ldapmodify.
-# CRC32 cf9d8a8e
+# CRC32 e9e8e31a
 dn: cn=schema
 objectClass: olcSchemaConfig
 cn: schema
@@ -572,9 +572,9 @@ olcObjectClasses: ( OLcfgGlOc:8 NAME 'olcModuleList' DESC 'OpenLDAP dynamic
 olcObjectClasses: ( OLcfgDbOc:2.1 NAME 'olcLdifConfig' DESC 'LDIF backend co
  nfiguration' SUP olcDatabaseConfig STRUCTURAL MUST olcDbDirectory )
 structuralObjectClass: olcSchemaConfig
-entryUUID: 27b713e6-c2d8-1036-8a76-abde543c0e22
+entryUUID: 7237710a-c2eb-1036-8d55-5742fa57f4f3
 creatorsName: cn=config
-createTimestamp: 20170501163705Z
-entryCSN: 20170501163705.239501Z#000000#000#000000
+createTimestamp: 20170501185510Z
+entryCSN: 20170501185510.670718Z#000000#000#000000
 modifiersName: cn=config
-modifyTimestamp: 20170501163705Z
+modifyTimestamp: 20170501185510Z
