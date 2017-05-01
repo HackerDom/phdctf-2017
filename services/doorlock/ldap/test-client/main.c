@@ -12,6 +12,17 @@ char ldap_host[]     = "localhost";
 char root_dn[]       = "cn=admin,dc=iot,dc=phdays,dc=com";
 char root_pw[]       = "XfhC57uwby3plBWD";
 
+void sanitize(char s[]) {
+    int depth = 0;
+    for (int i = 0; i < strlen(s); ++i) {
+        depth += (s[i] == '(') - (s[i] == ')');
+        if (s[i] == '*' || s[i] == '~' || s[i] == '\\') {
+            s[i] = '_';
+        }
+        s[i+1] = depth ? s[i+1] : 0;
+    }
+}
+
 int main(int argc, char**argv) {
   int ret;
 
@@ -44,6 +55,8 @@ int main(int argc, char**argv) {
 
   char query[512];
   sprintf(query, "(&(lockId=%s)(cn=%s))", argv[1], argv[2]);
+  printf("LDAP query: '%s'\n", query);
+  sanitize(query);
   printf("LDAP query: '%s'\n", query);
   char *searchattrs[2];
   searchattrs[0] = "cardTag";
