@@ -25,6 +25,7 @@ dn: cn=$CARD_ID,cn=$LOCK_ID,cn=locks,$LDAP_ROOT
 objectClass: top
 objectClass: device
 objectClass: cardObject
+lockId:      $LOCK_ID
 cardTag:     $CARD_TAG
 cardOwner:   John Doe
 timestamp:   199412161032Z
