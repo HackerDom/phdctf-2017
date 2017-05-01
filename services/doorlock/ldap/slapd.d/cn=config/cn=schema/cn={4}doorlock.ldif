@@ -1,24 +1,27 @@
 # AUTO-GENERATED FILE - DO NOT EDIT!! Use ldapmodify.
-# CRC32 af6f1be0
+# CRC32 4261e5df
 dn: cn={4}doorlock
 objectClass: olcSchemaConfig
 cn: {4}doorlock
 olcAttributeTypes: {0}( 1.3.6.1.4.1.99.99.1.0 NAME 'lockId' DESC 'Lock Id' E
- QUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1
- .1466.115.121.1.15{32} )
+ QUALITY caseIgnoreMatch ORDERING caseIgnoreOrderingMatch SUBSTR caseIgnoreS
+ ubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15{32} )
 olcAttributeTypes: {1}( 1.3.6.1.4.1.99.99.1.1 NAME 'lockModel' DESC 'Lock Mo
- del' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6
- .1.4.1.1466.115.121.1.15{64} )
+ del' EQUALITY caseIgnoreMatch ORDERING caseIgnoreOrderingMatch SUBSTR caseI
+ gnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15{64} )
 olcAttributeTypes: {2}( 1.3.6.1.4.1.99.99.1.2 NAME 'lockFloor' DESC 'Lock Fl
- oor' EQUALITY integerMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.27 )
+ oor' EQUALITY integerMatch ORDERING integerOrderingMatch SYNTAX 1.3.6.1.4.1
+ .1466.115.121.1.27 )
 olcAttributeTypes: {3}( 1.3.6.1.4.1.99.99.1.3 NAME 'lockRoom' DESC 'Lock Roo
- m' EQUALITY integerMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.27 )
+ m' EQUALITY integerMatch ORDERING integerOrderingMatch SYNTAX 1.3.6.1.4.1.1
+ 466.115.121.1.27 )
 olcAttributeTypes: {4}( 1.3.6.1.4.1.99.99.1.4 NAME 'cardTag' DESC 'RFID Acce
- ss Card Tag' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch SYNT
- AX 1.3.6.1.4.1.1466.115.121.1.15{64} )
+ ss Card Tag' EQUALITY caseIgnoreMatch ORDERING caseIgnoreOrderingMatch SUBS
+ TR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15{64} )
 olcAttributeTypes: {5}( 1.3.6.1.4.1.99.99.1.5 NAME 'cardOwner' DESC 'RFID Ac
- cess Card Owner' EQUALITY caseIgnoreMatch SUBSTR caseIgnoreSubstringsMatch 
- SYNTAX 1.3.6.1.4.1.1466.115.121.1.15{256} )
+ cess Card Owner' EQUALITY caseIgnoreMatch ORDERING caseIgnoreOrderingMatch 
+ SUBSTR caseIgnoreSubstringsMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.15{256} 
+ )
 olcAttributeTypes: {6}( 1.3.6.1.4.1.99.99.1.6 NAME 'timestamp' DESC 'Timesta
  mp' EQUALITY generalizedTimeMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.24 )
 olcObjectClasses: {0}( 1.3.6.1.4.1.99.99.2.1 NAME 'lockObject' DESC 'Door Lo
@@ -28,9 +31,9 @@ olcObjectClasses: {1}( 1.3.6.1.4.1.99.99.2.2 NAME 'cardObject' DESC 'Access
  Card Object' SUP top AUXILIARY MUST ( lockId $ cardTag ) MAY ( cardOwner $ 
  timestamp ) )
 structuralObjectClass: olcSchemaConfig
-entryUUID: 57407fce-c2ee-1036-89cb-753a4ea42277
+entryUUID: 1df0c368-c2f4-1036-9648-aff1bf41bfdc
 creatorsName: cn=config
-createTimestamp: 20170501191553Z
-entryCSN: 20170501191553.917116Z#000000#000#000000
+createTimestamp: 20170501195714Z
+entryCSN: 20170501195714.747043Z#000000#000#000000
 modifiersName: cn=config
-modifyTimestamp: 20170501191553Z
+modifyTimestamp: 20170501195714Z
