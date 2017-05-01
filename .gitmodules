@@ -13,3 +13,6 @@
 [submodule "services/thermometer/thermometer-sensor/wait-for-it"]
 	path = services/thermometer/sensor/wait-for-it
 	url = https://github.com/vishnubob/wait-for-it.git
+[submodule "services/thermometer/mosquitto-db-init/wait-for-it"]
+	path = services/thermometer/mosquitto-db-init/wait-for-it
+	url = https://github.com/vishnubob/wait-for-it.git
