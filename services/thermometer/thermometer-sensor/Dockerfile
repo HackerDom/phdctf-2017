@@ -6,4 +6,5 @@ RUN make && make install
 COPY src /usr/src/thermometer
 WORKDIR /usr/src/thermometer
 RUN gcc -o /usr/bin/thermometer thermometer.c -l paho-mqtt3c
+COPY wait-for-it/wait-for-it.sh /usr/bin/wait-for-it.sh
 CMD ["/usr/bin/thermometer"]

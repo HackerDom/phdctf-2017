@@ -3,7 +3,7 @@
 #include "string.h"
 #include "MQTTClient.h"
 
-#define ADDRESS     "tcp://172.17.0.2:1883"
+#define ADDRESS     "tcp://mqtt-broker:1883"
 #define CLIENTID    "ExampleClientPub"
 #define TOPIC       "MQTT Examples"
 #define PAYLOAD     "Hello World!"
@@ -22,6 +22,8 @@ int main(int argc, char* argv[])
         MQTTCLIENT_PERSISTENCE_NONE, NULL);
     conn_opts.keepAliveInterval = 20;
     conn_opts.cleansession = 1;
+    conn_opts.username = "temperature_senso%";
+    conn_opts.password = "test";
 
     if ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS)
     {
