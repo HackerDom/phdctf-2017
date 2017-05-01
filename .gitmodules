@@ -1,5 +1,5 @@
 [submodule "services/thermometer/thermometer-sensor/paho.mqtt.c"]
-	path = services/thermometer/thermometer-sensor/paho.mqtt.c
+	path = services/thermometer/sensor/paho.mqtt.c
 	url = https://github.com/eclipse/paho.mqtt.c.git
 [submodule "services/thermometer/mosquitto-auth-plugin/mosquitto"]
 	path = services/thermometer/mosquitto-auth-plugin/mosquitto
@@ -11,5 +11,5 @@
 	path = services/thermometer/mosquitto/wait-for-it
 	url = https://github.com/vishnubob/wait-for-it.git
 [submodule "services/thermometer/thermometer-sensor/wait-for-it"]
-	path = services/thermometer/thermometer-sensor/wait-for-it
+	path = services/thermometer/sensor/wait-for-it
 	url = https://github.com/vishnubob/wait-for-it.git
