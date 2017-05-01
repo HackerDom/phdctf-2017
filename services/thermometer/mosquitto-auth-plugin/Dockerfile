@@ -1,11 +1,15 @@
-FROM debian:latest
-RUN apt-get update && \
-    apt-get install -y build-essential gcc make libssl-dev openssl libmysqlclient-dev libc-ares-dev uuid-dev && \
-    rm -rf /var/lib/apt/lists/*
-COPY mosquitto /usr/src/mosquitto
-COPY mosquitto-auth-plug /usr/src/mosquitto-auth-plug
-COPY config.mk /usr/src/mosquitto-auth-plug/
-WORKDIR /usr/src/mosquitto
+FROM alpine:3.4
+
+RUN apk add --no-cache make gcc g++ musl-dev util-linux-dev mariadb-dev
+
+COPY mosquitto /usr/mosquitto
+COPY mosquitto-config.mk /usr/mosquitto/config.mk
+
+COPY mosquitto-auth-plug /usr/mosquitto-auth-plug
+COPY mosquitto-auth-plug-config.mk /usr/mosquitto-auth-plug/config.mk
+COPY be-mysql.c /usr/mosquitto-auth-plug/
+
+WORKDIR /usr/mosquitto
 RUN make binary
-WORKDIR /usr/src/mosquitto-auth-plug
+WORKDIR /usr/mosquitto-auth-plug
 RUN make
