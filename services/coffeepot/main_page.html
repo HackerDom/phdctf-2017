@@ -1,3 +1,9 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+<title>Coffee Pot</title>
+
 <style>
 * {
   .box-sizing(border-box);
@@ -47,7 +53,6 @@ button {
   width: 300px;
   padding: 0px 0px 20px 10px;
 
-  margin: 0px 0px 20px -10px;
 }
 
 .brew {
@@ -58,8 +63,6 @@ button {
 
 .brew-button-panel {
   display: inline-block;
-  /*width: 40%;*/
-  /*margin: 0 auto;*/
 }
 
 .step {
@@ -78,12 +81,12 @@ button {
 
 </style>
 
-<!-- Latest compiled and minified CSS -->
-<!-- <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous"> -->
-
 <script>
+var timerId = 0;
+
 function updateStatus() {
   pot = document.getElementById("input-pot").value
+  localStorage["pot"] = pot
 
   var client = new XMLHttpRequest();
   client.open("PROPFIND", "/pot-" + pot);
@@ -92,8 +95,6 @@ function updateStatus() {
   client.onreadystatechange = function() {
     if (client.readyState != 4) return;
 
-    rawResult = document.getElementById("pot-raw")
-    
     pot_id = document.getElementById("pot-id")
     pot_state = document.getElementById("pot-state")
     pot_temperature = document.getElementById("pot-temperature")
@@ -105,21 +106,20 @@ function updateStatus() {
                 ["input-flag", "Flag", "1234ABCD="], ["pot-state", "State", "NEW"],
                 ["pot-temperature", "Temperature", 20]]
 
+
     if (client.status == 200) {
       if (client.responseText.length == 0) {
-        // pot_state.innerText = "NEW"
-        // pot_temperature.innerText = "20"
-
         elements.forEach(function (item, i, arr) {
           document.getElementById(item[0]).value = item[2]
           document.getElementById(item[0]).innerText = item[2]
           document.getElementById(item[0]).disabled = false
         })        
 
+        var el = document.getElementsByClassName("plusone");
+        for (var i = 0; i < el.length; i++) {
+            el[i].disabled = true
+        }
       } else {
-        pot_state.innerText = "BREWING"
-        pot_temperature.innerText = "30"
-
         var fields = {}
 
         client.responseText.split("\n").forEach(function (item, i, arr) {
@@ -133,11 +133,15 @@ function updateStatus() {
           document.getElementById(item[0]).disabled = true
         })
 
-        setTimeout(updateStatus, 5000)
+        var el = document.getElementsByClassName("plusone");
+        for (var i = 0; i < el.length; i++) {
+            el[i].disabled = false
+        }
+
+        clearTimeout(timerId)
+        timerId = setTimeout(updateStatus, 5000)
       }
-      rawResult.innerText = client.responseText;
     } else {
-      rawResult.innerText = client.status + ': ' + client.statusText;
     }
   }
   client.send();
@@ -158,19 +162,22 @@ function sendBrewRequest(pot, cmd) {
   client.setRequestHeader("Accept-Additions", acceptAdditions)
 
   client.onreadystatechange = function() {
-    if (client.readyState != 4) return;
-
-    brewResult = document.getElementById("brew-result")
-
-    if (client.status != 200) {
-      brewResult.innerText = client.status + ': ' + client.statusText;
-    } else {
-      brewResult.innerText = client.responseText;
-    }
-    updateStatus()
+    if (client.readyState == 4) updateStatus();
   }
 
   client.send(cmd);
+}
+
+function sendPutRequest(addition) {
+  var client = new XMLHttpRequest();
+  client.open("PUT", "/pot-" + pot);
+  client.setRequestHeader("Content-Type", "message/coffeepot");
+  client.setRequestHeader("Addition", addition);
+
+  client.onreadystatechange = function() {
+    if (client.readyState == 4) updateStatus();
+  }
+  client.send();
 }
 
 function brewStartPressed() {
@@ -185,9 +192,28 @@ function brewStopPressed() {
   return false
 }
 
+function potKeyPressed(event) {
+  if (event.keyCode == 13) {
+    updateStatus()
+  }
+}
+
+function potChanged() {
+  clearTimeout(timerId)
+}
+
+function onLoad() {
+  if (localStorage["pot"]) {
+    document.getElementById("input-pot").value = localStorage["pot"]
+  }
+  updateStatus()
+}
+
 </script>
 
-<body onload="updateStatus()">
+</head>
+
+<body onload="onLoad()">
 
 <div class="step">
   <h1>
@@ -196,7 +222,9 @@ function brewStopPressed() {
 </div>
 
 <div class="step">
-  STEP 1. Choose pot: <input id="input-pot" type="number" name="pot" value=1 min=0 >
+  STEP 1. Choose pot: 
+  <input id="input-pot" type="number" name="pot" value=1 min=0 
+    onkeypress="potKeyPressed(event)" onchange="potChanged()">
   <button onclick="updateStatus()">SET</button>
 </div>
 
@@ -212,29 +240,26 @@ function brewStopPressed() {
 </div>
 
 <div class="additions fullwidth">
-  <!-- <div class="fullwidth"> -->
-    <!-- &#x1F95B; -->
-    <div class="addition">Milk 
-      <input id="input-milk" type="number" name="pot" min=0>
-      <button>+1</button>
-    </div>
-    <div class="addition">
-      Almond <input id="input-almond" type="number" name="pot" min=0>
-      <button>+1</button>
-    </div>
-    <div class="addition">
-      Whisky <input id="input-whisky" type="number" name="pot" min=0>
-      <button>+1</button>
-    </div>
-    <div class="addition">
-      Rum <input id="input-rum" type="number" name="pot" min=10>
-      <button>+1</button>
-    </div>
-    <div class="addition">
-        &#x2691; <input id="input-flag" type="text" name="pot" >
-      <button disabled>+1</button>
-    </div>
-  <!-- </div> -->
+  <div class="addition">Milk 
+    <input id="input-milk" type="number" name="pot" min=0>
+    <button class="plusone" onclick="sendPutRequest('Whole-milk')">+1</button>
+  </div>
+  <div class="addition">
+    Almond <input id="input-almond" type="number" name="pot" min=0>
+    <button class="plusone" onclick="sendPutRequest('Almond')">+1</button>
+  </div>
+  <div class="addition">
+    Whisky <input id="input-whisky" type="number" name="pot" min=0>
+    <button class="plusone" onclick="sendPutRequest('Whisky')">+1</button>
+  </div>
+  <div class="addition">
+    Rum <input id="input-rum" type="number" name="pot" min=10>
+    <button class="plusone" onclick="sendPutRequest('Rum')">+1</button>
+  </div>
+  <div class="addition">
+      &#x2691; <input id="input-flag" type="text" name="pot" >
+    <button onclick="sendPutRequest('Flag')" disabled>+1</button>
+  </div>
 </div>
 
 <div class="step"> 
@@ -245,11 +270,8 @@ function brewStopPressed() {
   <div class="brew-button-panel">
     <button onclick="brewStartPressed()">START</button>
     <button onclick="brewStopPressed()">STOP</button>
-    <!-- <button ">UPDATE</button> -->
   </div>
-</div class="step">
-
-<div id="brew-result"> </div>
-<div id="pot-raw"> </div>
+</div>
 
 </body>
+</html>

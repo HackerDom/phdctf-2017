@@ -62,6 +62,34 @@ elif [[ "$REQUEST_METHOD" == "BREW" || "$REQUEST_METHOD" == "POST" ]]; then
   else
     i_am_teapot
   fi
+elif [[ "$REQUEST_METHOD" == "PUT" ]]; then
+  if [[ "${REQUEST_PATH}" =~ .*/([^./]+) ]]; then
+    echo "Content-Type: text/plain"
+    echo
+    pot="${BASH_REMATCH[1]}"
+    if [ ! -f "pots/${pot}" ]; then
+      echo NO EXISTS
+    else
+      > "pots/${pot}.new"
+      cat "pots/${pot}" | while read line; do
+        addition="$(echo "${line}"|cut -d ':' -f 1)"
+        count="$(echo "${line}"|cut -d ':' -f 2)"
+        
+        if [[ "${addition}" != "${HTTP_ADDITION}" ]]; then
+          echo "${addition}:${count}" >> "pots/${pot}.new"
+        else
+          echo "${addition}:$((count+1))" >> "pots/${pot}.new"
+        fi
+      done
+
+      # restore modification time
+      touch -r "pots/${pot}" "pots/${pot}.new"
+      mv "pots/${pot}.new" "pots/${pot}"
+      echo ADDED
+    fi
+  else
+    i_am_teapot
+  fi
 elif [[ "$REQUEST_METHOD" == "PROPFIND" ]]; then
   if [[ "${REQUEST_PATH}" =~ .*/([^./]+) ]]; then
     echo "Content-Type: text/plain"
@@ -75,7 +103,7 @@ elif [[ "$REQUEST_METHOD" == "PROPFIND" ]]; then
       time_diff="$(( time_now - time_file ))"
       temperature="$(calc_temperature "${time_diff}")"
       echo "Temperature: ${temperature}"
-      if [[ temperature -gt 95 ]]; then
+      if [[ temperature -ge 95 ]]; then
         echo "State: READY"
       else
         echo "State: BREWING"
@@ -85,18 +113,3 @@ elif [[ "$REQUEST_METHOD" == "PROPFIND" ]]; then
     i_am_teapot
   fi
 fi
-
-# echo "<b>Hello</b>"
-# echo "$RANDOM"
-
-# read a
-# sleep 10
-# echo $a
-
-
-# set | sed 's/$/<br>/'
-# sleep 1h
-
-
-#num='a[$(cat aaaa)]'
-#echo "$((num+1))"
