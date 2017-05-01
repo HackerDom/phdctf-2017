@@ -5,4 +5,4 @@ then
 	exit 1
 fi
 source ldap.cfg
-ldapsearch -b $LDAP_ROOT -s sub -h 127.0.0.1 -D $LDAP_USER -w $LDAP_PASS "$1" -LLL
+ldapsearch -h $LDAP_HOST -D $LDAP_USER -w $LDAP_PASS -b $LDAP_ROOT "$1" -LLL
