@@ -14,7 +14,8 @@ echo "LOCK_MODEL: $LOCK_MODEL"
 echo "LOCK_FLOOR: $LOCK_FLOOR"
 echo "LOCK_ROOM:  $LOCK_ROOM"
 
-/usr/bin/time -f "\t%E real,\t%U user,\t%S sys" -a -o api-lock-register.log cat << EOF | ldapadd -h $LDAP_HOST -D $LDAP_USER -w $LDAP_PASS
+/usr/bin/time -f "\t%E real,\t%U user,\t%S sys" -a -o api-lock-register.log \
+cat << EOF | ldapadd -h $LDAP_HOST -D $LDAP_USER -w $LDAP_PASS
 dn: cn=$LOCK_ID,cn=locks,$LDAP_ROOT
 objectClass: top
 objectClass: device

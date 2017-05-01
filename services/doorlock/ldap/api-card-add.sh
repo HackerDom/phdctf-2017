@@ -20,6 +20,7 @@ then
   exit 0
 fi
 
+/usr/bin/time -f "\t%E real,\t%U user,\t%S sys" -a -o api-card-add.log \
 cat << EOF | ldapadd -h $LDAP_HOST -D $LDAP_USER -w $LDAP_PASS
 dn: cn=$CARD_ID,cn=$LOCK_ID,cn=locks,$LDAP_ROOT
 objectClass: top
