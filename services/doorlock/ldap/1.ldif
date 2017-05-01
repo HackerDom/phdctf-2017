@@ -1,0 +1,6 @@
+dn: cn=00001,cn=locks,dc=iot,dc=phdays,dc=com
+objectClass: top
+objectClass: device
+objectClass: lockObject
+lockId:    00000000000001
+lockModel: Secure Lock Model DEADBEEF

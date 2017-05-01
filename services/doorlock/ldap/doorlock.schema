@@ -1,0 +1,52 @@
+# doorlock.schema -- Doorlock Objects Schema
+
+attributetype ( 1.3.6.1.4.1.99.99.1.1
+          NAME 'lockId'
+          DESC 'Lock Id'
+          EQUALITY caseIgnoreMatch
+          SUBSTR caseIgnoreSubstringsMatch
+          SYNTAX 1.3.6.1.4.1.1466.115.121.1.15{16} )
+
+attributetype ( 1.3.6.1.4.1.99.99.1.2
+          NAME 'lockModel'
+          DESC 'Lock Model'
+          EQUALITY caseIgnoreMatch
+          SUBSTR caseIgnoreSubstringsMatch
+          SYNTAX 1.3.6.1.4.1.1466.115.121.1.15{64} )
+
+attributetype ( 1.3.6.1.4.1.99.99.1.3
+          NAME 'cardId'
+          DESC 'RFID Access Card Id'
+          EQUALITY caseIgnoreMatch
+          SUBSTR caseIgnoreSubstringsMatch
+          SYNTAX 1.3.6.1.4.1.1466.115.121.1.15{16} )
+
+attributetype ( 1.3.6.1.4.1.99.99.1.4
+          NAME 'cardData'
+          DESC 'RFID Access Card Data'
+          EQUALITY caseIgnoreMatch
+          SUBSTR caseIgnoreSubstringsMatch
+          SYNTAX 1.3.6.1.4.1.1466.115.121.1.15{64} )
+
+attributetype ( 1.3.6.1.4.1.99.99.1.5
+          NAME 'cardComment'
+          DESC 'RFID Access Card Comment'
+          EQUALITY caseIgnoreMatch
+          SUBSTR caseIgnoreSubstringsMatch
+          SYNTAX 1.3.6.1.4.1.1466.115.121.1.15{256} )
+
+objectClass ( 1.3.6.1.4.1.99.99.2.1
+        NAME 'lockObject'
+        DESC 'Door Lock Object'
+        SUP top
+        AUXILIARY
+        MUST ( lockId $ lockModel ) )
+
+objectClass ( 1.3.6.1.4.1.99.99.2.2
+        NAME 'cardObject'
+        DESC 'Access Card Object'
+        SUP top
+        AUXILIARY
+        MUST ( cardId $ cardData )
+        MAY cardComment )
+

@@ -1,0 +1,3 @@
+dn: cn=locks,dc=iot,dc=phdays,dc=com
+objectClass: top
+objectClass: device

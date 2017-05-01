@@ -1,0 +1,6 @@
+dn: cn=00001,cn=00002,cn=locks,dc=iot,dc=phdays,dc=com
+objectClass: top
+objectClass: device
+objectClass: cardObject
+cardId:    01291
+cardData:  09DF8791AX

@@ -1,0 +1,6 @@
+dn: cn=00002,cn=00002,cn=locks,dc=iot,dc=phdays,dc=com
+objectClass: top
+objectClass: device
+objectClass: cardObject
+cardId:    81872
+cardData:  109A78EFD0

@@ -1,0 +1,17 @@
+sudo apt update
+sudo apt install slapd ldap-utils
+sudo dpkg-reconfigure slapd
+# sudo apt install lat
+
+iot.phdays.com
+phdays
+Administrator password: XfhC57uwby3plBWD
+
+Base DN:  dc=iot,dc=phdays,dc=com
+Username: cn=admin,dc=iot,dc=phdays,dc=com
+Password: XfhC57uwby3plBWD
+
+http://pro-ldap.ru/tr/zytrax/apa/ldap-root.html
+https://guillaumemaka.com/2013/07/17/openldap-create-a-custom-ldap-schema.html
+https://access.redhat.com/documentation/en-US/Red_Hat_Directory_Server/8.1/html/Configuration_and_Command_Reference/Configuration_Command_File_Reference-Command_Line_Utilities-ldapsearch.html
+
