@@ -47,6 +47,12 @@ if [[ "${REQUEST_METHOD}" == "GET" ]]; then
     echo "Content-Type: image/x-icon"
     echo
     show_favicon
+  else
+    echo "Status: 404 Not found"
+    echo "Content-Type: text/html"
+    echo "Safe: yes"
+    echo
+    echo "This is not an offline competition, no coffee for you this time :)"
   fi
 elif [[ "$REQUEST_METHOD" == "BREW" || "$REQUEST_METHOD" == "POST" ]]; then
   if [[ "${REQUEST_PATH}" =~ .*/([^./]+) ]]; then
@@ -93,6 +99,7 @@ elif [[ "$REQUEST_METHOD" == "PUT" ]]; then
 elif [[ "$REQUEST_METHOD" == "PROPFIND" ]]; then
   if [[ "${REQUEST_PATH}" =~ .*/([^./]+) ]]; then
     echo "Content-Type: text/plain"
+    echo "Safe: yes"
     echo
     pot="${BASH_REMATCH[1]}"
     if [ -f "pots/${pot}" ]; then
