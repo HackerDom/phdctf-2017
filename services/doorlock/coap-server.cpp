@@ -15,6 +15,10 @@
 #include <signal.h>
 #include <algorithm>
 
+#define LDAP_DEPRECATED 1
+#include <lber.h>
+#include <ldap.h>
+
 extern "C" {
 #include "coap_config.h"
 #include "resource.h"
@@ -22,6 +26,8 @@ extern "C" {
 }
 
 #define COAP_RESOURCE_CHECK_TIME 2
+
+char ldap_url[]      = "ldap://127.0.0.1:389";
 
 static int quit = 0;
 
@@ -248,8 +254,33 @@ get_context(const char *node, const char *port) {
   return ctx;
 }
 
-int
-main(int argc, char **argv) {
+int init_ldap(LDAP *ld) {
+  int ret;
+
+  ret = ldap_initialize( &ld, ldap_url );
+  if (ret) {
+    fprintf( stderr, "ldap_initialize" );
+    return ret;
+  }
+
+  int protocol_version = LDAP_VERSION3;
+  ret = ldap_set_option( ld, LDAP_OPT_PROTOCOL_VERSION, &protocol_version );
+  if (ret) {
+    fprintf( stderr, "ldap_set_option" );
+    return ret;
+  }
+
+  ret = ldap_simple_bind_s( ld, NULL, NULL );
+	if (ret) {
+		fprintf( stderr, "ldap_simple_bind_s" );
+		return ret;
+	}
+
+  fprintf( stderr, "Connected to ldap: %s\n", ldap_url );
+  return 0;
+}
+
+int main(int argc, char **argv) {
   coap_context_t  *ctx;
   fd_set readfds;
   struct timeval tv, *timeout;
@@ -275,8 +306,6 @@ main(int argc, char **argv) {
     }
   }
 
-  fprintf( stderr, "Starting doorlock server at %s:%s\n", addr_str, port_str);
-
   coap_set_log_level( log_level );
 
   ctx = get_context( addr_str, port_str );
@@ -285,7 +314,16 @@ main(int argc, char **argv) {
 
   init_resources( ctx );
 
+  LDAP *ld = NULL;
+  int ret;
+  if (ret = init_ldap(ld)) {
+    fprintf( stderr, " failed: %s (%d)\n", ldap_err2string(ret), ret );
+    return -1;
+  }
+
   signal( SIGINT, handle_sigint );
+
+  fprintf( stderr, "Starting doorlock server at %s:%s\n", addr_str, port_str);
 
   while ( !quit ) {
     FD_ZERO( &readfds );
