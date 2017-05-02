@@ -280,6 +280,8 @@ main(int argc, char **argv) {
     }
   }
 
+  fprintf( stderr, "Starting doorlock server at %s:%s\n", addr_str, port_str);
+
   coap_set_log_level( log_level );
 
   ctx = get_context( addr_str, port_str );
