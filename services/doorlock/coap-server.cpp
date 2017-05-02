@@ -32,7 +32,7 @@ static void handle_sigint(int signum) {
 static void send_response(coap_pdu_t *response, int code, char *data) {
   unsigned char buf[3];
 
-  response->hdr->code = COAP_RESPONSE_CODE(205);
+  response->hdr->code = COAP_RESPONSE_CODE(code);
 
   coap_add_option(response, COAP_OPTION_CONTENT_TYPE, coap_encode_var_bytes(buf, COAP_MEDIATYPE_TEXT_PLAIN), buf);
   coap_add_option(response, COAP_OPTION_MAXAGE, coap_encode_var_bytes(buf, 0x2ffff), buf);
