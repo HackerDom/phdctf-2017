@@ -47,7 +47,7 @@ static void hnd_get_index(
               coap_pdu_t *request,
               str *token,
               coap_pdu_t *response) {
-  send_response(response, 205, "DOORLOCK Service\n\n");
+  send_response(response, 205, "DOORLOCK Service");
 }
 
 static void hnd_register_lock(
@@ -174,28 +174,23 @@ static void hnd_get_card(
   send_response(response, 205, "TODO");
 }
 
-static void init_resources( coap_context_t *ctx ) {
-  coap_resource_t *r;
-  char *uri;
-
-  r = coap_resource_init(NULL, 0, 0);
-  coap_register_handler(r, COAP_REQUEST_GET, hnd_get_index);
+static void add_resource(
+              coap_context_t *ctx,
+              unsigned char method,
+              char *uri,
+              coap_method_handler_t handler )
+{
+  coap_resource_t * r = coap_resource_init((unsigned char *)uri, uri ? strlen(uri) : 0, 0);
+  coap_register_handler(r, method, handler);
   coap_add_resource(ctx, r);
+}
 
-  uri = "register_lock";
-  r = coap_resource_init((unsigned char *)uri, strlen(uri), 0);
-  coap_register_handler(r, COAP_REQUEST_POST, hnd_register_lock);
-  coap_add_resource(ctx, r);
-
-  uri = "add_card";
-  r = coap_resource_init((unsigned char *)uri, strlen(uri), 0);
-  coap_register_handler(r, COAP_REQUEST_POST, hnd_add_card);
-  coap_add_resource(ctx, r);
-
-  uri = "get_card";
-  r = coap_resource_init((unsigned char *)uri, strlen(uri), 0);
-  coap_register_handler(r, COAP_REQUEST_GET, hnd_get_card);
-  coap_add_resource(ctx, r);
+static void init_resources( coap_context_t *ctx )
+{
+  add_resource(ctx, COAP_REQUEST_GET,  NULL,            hnd_get_index);
+  add_resource(ctx, COAP_REQUEST_POST, "register_lock", hnd_register_lock);
+  add_resource(ctx, COAP_REQUEST_POST, "add_card",      hnd_add_card);
+  add_resource(ctx, COAP_REQUEST_GET,  "get_card",      hnd_get_card);
 }
 
 static void usage( const char *program ) {
