@@ -12,15 +12,27 @@ char ldap_host[]     = "localhost";
 char root_dn[]       = "cn=admin,dc=iot,dc=phdays,dc=com";
 char root_pw[]       = "XfhC57uwby3plBWD";
 
+int ldap_simple_bind_s(LDAP *ld, const char *who, const char *passwd);
+
 void sanitize(char s[]) {
     int depth = 0;
     for (int i = 0; i < strlen(s); ++i) {
         depth += (s[i] == '(') - (s[i] == ')');
-        if (s[i] == '*' || s[i] == '~' || s[i] == '\\') {
+        if (s[i] == '*' || s[i] == '~' || s[i] == '\\' || s[i] == '|') {
             s[i] = '_';
         }
         s[i+1] = depth ? s[i+1] : 0;
     }
+}
+
+int validate(char s[]) {
+  int open = 0;
+  int close = 0;
+  for (int i = 0; i < strlen(s); ++i) {
+    open += (s[i] == '(');
+    close += (s[i] == ')');
+  }
+  return close == 3 && open == 3;
 }
 
 int main(int argc, char**argv) {
@@ -54,10 +66,15 @@ int main(int argc, char**argv) {
   printf("ldap_simple_bind_s ok\n");
 
   char query[512];
-  sprintf(query, "(&(lockId=%s)(cn=%s))", argv[1], argv[2]);
+  sprintf(query, "(&(cn=%s)(lockId=%s))", argv[1], argv[2]);
   printf("LDAP query: '%s'\n", query);
   sanitize(query);
   printf("LDAP query: '%s'\n", query);
+  if (!validate(query)) {
+    printf("validation failed\n");
+    return 1;
+  }
+
   char *searchattrs[2];
   searchattrs[0] = "cardTag";
   searchattrs[1] = NULL;
