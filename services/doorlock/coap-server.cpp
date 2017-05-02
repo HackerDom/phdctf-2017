@@ -13,6 +13,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <signal.h>
+#include <algorithm>
 
 extern "C" {
 #include "coap_config.h"
@@ -28,16 +29,8 @@ static void handle_sigint(int signum) {
   quit = 1;
 }
 
-static void hnd_get_index(
-              coap_context_t *ctx,
-              struct coap_resource_t *resource,
-              const coap_endpoint_t *local_interface,
-              coap_address_t *peer,
-              coap_pdu_t *request,
-              str *token,
-              coap_pdu_t *response) {
+static void send_response(coap_pdu_t *response, int code, char *data) {
   unsigned char buf[3];
-  char data[] = "DOORLOCK Service\n\n";
 
   response->hdr->code = COAP_RESPONSE_CODE(205);
 
@@ -46,40 +39,162 @@ static void hnd_get_index(
   coap_add_data(response, strlen(data), (unsigned char *)data);
 }
 
-static void hnd_put_echo(
+static void hnd_get_index(
               coap_context_t *ctx,
               struct coap_resource_t *resource,
               const coap_endpoint_t *local_interface,
               coap_address_t *peer,
               coap_pdu_t *request,
               str *token,
-              coap_pdu_t *response ) {
-  size_t size;
-  unsigned char *data;
+              coap_pdu_t *response) {
+  send_response(response, 205, "DOORLOCK Service\n\n");
+}
 
-  (void)coap_get_data(request, &size, &data);
+static void hnd_register_lock(
+              coap_context_t *ctx,
+              struct coap_resource_t *resource,
+              const coap_endpoint_t *local_interface,
+              coap_address_t *peer,
+              coap_pdu_t *request,
+              str *token,
+              coap_pdu_t *response) {
+  coap_opt_iterator_t opt_iter;
+  char model[64];
+  char floor[8];
+  char room[8];
+  memset(model, 0, 64);
+  memset(floor, 0, 8);
+  memset(room, 0, 8);
 
-  if (size == 0) { /* coap_get_data() sets size to 0 on error */
-    response->hdr->code = COAP_RESPONSE_CODE(400);
+  if (request) {
+    coap_opt_t *option = coap_check_option(request, COAP_OPTION_URI_QUERY, &opt_iter);
+    while (option) {
+      char buf[1024];
+      memset(buf, 0, 1024);
+      strncpy(buf, (char *)COAP_OPT_VALUE(option), std::min(1024, (int)COAP_OPT_LENGTH(option)));
+      char *eq = strchr((char *)buf, '=');
+      if (eq) {
+        *eq = 0;
+        if (0 == strcmp("model", buf)) {
+          strncpy(model, eq + 1, std::min(64, (int)strlen(eq + 1)));
+        }
+        if (0 == strcmp("floor", buf)) {
+          strncpy(floor, eq + 1, std::min(8, (int)strlen(eq + 1)));
+        }
+        if (0 == strcmp("room", buf)) {
+          strncpy(room, eq + 1, std::min(8, (int)strlen(eq + 1)));
+        }
+      }
+      option = coap_option_next(&opt_iter);
+    }
+    printf("hnd_register_lock(): model='%s', floor='%s', room='%s'\n", model, floor, room);
   }
-  else {
-    unsigned char buf[3];
-    response->hdr->code = COAP_RESPONSE_CODE(205);
-    coap_add_option(response, COAP_OPTION_CONTENT_TYPE, coap_encode_var_bytes(buf, COAP_MEDIATYPE_TEXT_PLAIN), buf);
-    coap_add_option(response, COAP_OPTION_MAXAGE, coap_encode_var_bytes(buf, 0x2ffff), buf);
-    coap_add_data(response, size, data);
+
+  send_response(response, 205, "TODO");
+}
+
+static void hnd_add_card(
+              coap_context_t *ctx,
+              struct coap_resource_t *resource,
+              const coap_endpoint_t *local_interface,
+              coap_address_t *peer,
+              coap_pdu_t *request,
+              str *token,
+              coap_pdu_t *response) {
+  coap_opt_iterator_t opt_iter;
+  char lock[64];
+  char card[64];
+  char tag[64];
+  memset(lock, 0, 64);
+  memset(card, 0, 64);
+  memset(tag, 0, 64);
+
+  if (request) {
+    coap_opt_t *option = coap_check_option(request, COAP_OPTION_URI_QUERY, &opt_iter);
+    while (option) {
+      char buf[1024];
+      memset(buf, 0, 1024);
+      strncpy(buf, (char *)COAP_OPT_VALUE(option), std::min(1024, (int)COAP_OPT_LENGTH(option)));
+      char *eq = strchr((char *)buf, '=');
+      if (eq) {
+        *eq = 0;
+        if (0 == strcmp("lock", buf)) {
+          strncpy(lock, eq + 1, std::min(64, (int)strlen(eq + 1)));
+        }
+        if (0 == strcmp("card", buf)) {
+          strncpy(card, eq + 1, std::min(8, (int)strlen(eq + 1)));
+        }
+        if (0 == strcmp("tag", buf)) {
+          strncpy(tag, eq + 1, std::min(8, (int)strlen(eq + 1)));
+        }
+      }
+      option = coap_option_next(&opt_iter);
+    }
+    printf("hnd_add_card(): lock='%s', card='%s', tag='%s'\n", lock, card, tag);
   }
+
+  send_response(response, 205, "TODO");
+}
+
+static void hnd_get_card(
+              coap_context_t *ctx,
+              struct coap_resource_t *resource,
+              const coap_endpoint_t *local_interface,
+              coap_address_t *peer,
+              coap_pdu_t *request,
+              str *token,
+              coap_pdu_t *response) {
+  coap_opt_iterator_t opt_iter;
+  char lock[64];
+  char card[64];
+  memset(lock, 0, 64);
+  memset(card, 0, 64);
+
+  if (request) {
+    coap_opt_t *option = coap_check_option(request, COAP_OPTION_URI_QUERY, &opt_iter);
+    while (option) {
+      char buf[1024];
+      memset(buf, 0, 1024);
+      strncpy(buf, (char *)COAP_OPT_VALUE(option), std::min(1024, (int)COAP_OPT_LENGTH(option)));
+      char *eq = strchr((char *)buf, '=');
+      if (eq) {
+        *eq = 0;
+        if (0 == strcmp("lock", buf)) {
+          strncpy(lock, eq + 1, std::min(64, (int)strlen(eq + 1)));
+        }
+        if (0 == strcmp("card", buf)) {
+          strncpy(card, eq + 1, std::min(8, (int)strlen(eq + 1)));
+        }
+      }
+      option = coap_option_next(&opt_iter);
+    }
+    printf("hnd_get_card(): lock='%s', card='%s'\n", lock, card);
+  }
+
+  send_response(response, 205, "TODO");
 }
 
 static void init_resources( coap_context_t *ctx ) {
   coap_resource_t *r;
+  char *uri;
 
   r = coap_resource_init(NULL, 0, 0);
   coap_register_handler(r, COAP_REQUEST_GET, hnd_get_index);
   coap_add_resource(ctx, r);
 
-  r = coap_resource_init((unsigned char *)"echo", 4, 0);
-  coap_register_handler(r, COAP_REQUEST_PUT, hnd_put_echo);
+  uri = "register_lock";
+  r = coap_resource_init((unsigned char *)uri, strlen(uri), 0);
+  coap_register_handler(r, COAP_REQUEST_POST, hnd_register_lock);
+  coap_add_resource(ctx, r);
+
+  uri = "add_card";
+  r = coap_resource_init((unsigned char *)uri, strlen(uri), 0);
+  coap_register_handler(r, COAP_REQUEST_POST, hnd_add_card);
+  coap_add_resource(ctx, r);
+
+  uri = "get_card";
+  r = coap_resource_init((unsigned char *)uri, strlen(uri), 0);
+  coap_register_handler(r, COAP_REQUEST_GET, hnd_get_card);
   coap_add_resource(ctx, r);
 }
 
