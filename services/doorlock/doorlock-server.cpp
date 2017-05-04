@@ -103,6 +103,51 @@ static int ldap_register_lock(
   return 0;
 }
 
+static int ldap_add_card(
+  char *lock_id,
+  char *card_id,
+  char *card_tag)
+{
+  char dn[64];
+  sprintf( dn, "cn=%s,cn=%s,cn=locks,%s", card_id, lock_id, ldap_root );
+
+  LDAPMod OClass, LockId, CardTag, CardOwner, Timestamp;
+
+  char *oc_values[] = { "top", "device", "cardObject", NULL };
+  OClass.mod_op     = LDAP_MOD_ADD;
+  OClass.mod_type   = "objectClass";
+  OClass.mod_values = oc_values;
+
+  char *li_values[] = { lock_id, NULL };
+  LockId.mod_op     = LDAP_MOD_ADD;
+  LockId.mod_type   = "lockId";
+  LockId.mod_values = li_values;
+
+  char *ct_values[] = { card_tag, NULL };
+  CardTag.mod_op     = LDAP_MOD_ADD;
+  CardTag.mod_type   = "cardTag";
+  CardTag.mod_values = ct_values;
+
+  char *co_values[] = { "John Doe", NULL }; // TODO
+  CardOwner.mod_op     = LDAP_MOD_ADD;
+  CardOwner.mod_type   = "cardOwner";
+  CardOwner.mod_values = co_values;
+
+  char *ts_values[] = { "199412161032Z", NULL }; // TODO
+  Timestamp.mod_op     = LDAP_MOD_ADD;
+  Timestamp.mod_type   = "timestamp";
+  Timestamp.mod_values = ts_values;
+
+  LDAPMod *NewEntry[6] = { &OClass, &LockId, &CardTag, &CardOwner, &Timestamp, NULL };
+
+  int ret = ldap_add( ld, dn, NewEntry );
+  if ( ret < 0 ) {
+    fprintf( stderr, "ldap_add failed\n" );
+    return -1;
+  }
+  return 0;
+}
+
 static void hnd_get_index(
               coap_context_t *ctx,
               struct coap_resource_t *resource,
@@ -134,18 +179,18 @@ static void hnd_register_lock(
   while (option) {
     char buf[1024];
     memset(buf, 0, 1024);
-    strncpy(buf, (char *)COAP_OPT_VALUE(option), std::min(1024, (int)COAP_OPT_LENGTH(option)));
+    strncpy(buf, (char *)COAP_OPT_VALUE(option), std::min(1023, (int)COAP_OPT_LENGTH(option)));
     char *eq = strchr((char *)buf, '=');
     if (eq) {
       *eq = 0;
       if (0 == strcmp("model", buf)) {
-        strncpy(model, eq + 1, std::min(64, (int)strlen(eq + 1)));
+        strncpy(model, eq + 1, std::min(63, (int)strlen(eq + 1)));
       }
       if (0 == strcmp("floor", buf)) {
-        strncpy(floor, eq + 1, std::min(8, (int)strlen(eq + 1)));
+        strncpy(floor, eq + 1, std::min(7, (int)strlen(eq + 1)));
       }
       if (0 == strcmp("room", buf)) {
-        strncpy(room, eq + 1, std::min(8, (int)strlen(eq + 1)));
+        strncpy(room, eq + 1, std::min(7, (int)strlen(eq + 1)));
       }
     }
     option = coap_option_next(&opt_iter);
@@ -164,12 +209,13 @@ static void hnd_register_lock(
   }
   lock_id[LOCK_ID_LEN - 1] = 0;
 
-  if ( ldap_register_lock( lock_id, model, floor, room ) ) {
+  int err = ldap_register_lock( lock_id, model, floor, room );
+  if ( err ) {
     send_response( response, 500, "ERROR" );
-    return;
   }
-
-  send_response( response, 205, lock_id );
+  else {
+    send_response( response, 205, lock_id );
+  }
 }
 
 static void hnd_add_card(
@@ -192,25 +238,31 @@ static void hnd_add_card(
   while (option) {
     char buf[1024];
     memset(buf, 0, 1024);
-    strncpy(buf, (char *)COAP_OPT_VALUE(option), std::min(1024, (int)COAP_OPT_LENGTH(option)));
+    strncpy(buf, (char *)COAP_OPT_VALUE(option), std::min(1023, (int)COAP_OPT_LENGTH(option)));
     char *eq = strchr((char *)buf, '=');
     if (eq) {
       *eq = 0;
       if (0 == strcmp("lock", buf)) {
-        strncpy(lock, eq + 1, std::min(64, (int)strlen(eq + 1)));
+        strncpy(lock, eq + 1, std::min(63, (int)strlen(eq + 1)));
       }
       if (0 == strcmp("card", buf)) {
-        strncpy(card, eq + 1, std::min(8, (int)strlen(eq + 1)));
+        strncpy(card, eq + 1, std::min(63, (int)strlen(eq + 1)));
       }
       if (0 == strcmp("tag", buf)) {
-        strncpy(tag, eq + 1, std::min(8, (int)strlen(eq + 1)));
+        strncpy(tag, eq + 1, std::min(63, (int)strlen(eq + 1)));
       }
     }
     option = coap_option_next(&opt_iter);
   }
-  printf("hnd_add_card(): lock='%s', card='%s', tag='%s'\n", lock, card, tag);
+  printf("hnd_add_card( lock='%s', card='%s', tag='%s' )\n", lock, card, tag);
 
-  send_response(response, 205, "TODO");
+  int err = ldap_add_card( lock, card, tag );
+  if ( err ) {
+    send_response( response, 500, "ERROR" );
+  }
+  else {
+    send_response( response, 205, "OK" );
+  }
 }
 
 static void hnd_get_card(
