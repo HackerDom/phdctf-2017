@@ -35,7 +35,7 @@ static void handle_sigint(int signum) {
   quit = 1;
 }
 
-static void send_response(coap_pdu_t *response, int code, char *data) {
+static void send_response(coap_pdu_t *response, int code, const char *data) {
   unsigned char buf[3];
 
   response->hdr->code = COAP_RESPONSE_CODE(code);
@@ -183,7 +183,7 @@ static void hnd_get_card(
 static void add_resource(
               coap_context_t *ctx,
               unsigned char method,
-              char *uri,
+              const char *uri,
               coap_method_handler_t handler )
 {
   coap_resource_t * r = coap_resource_init((unsigned char *)uri, uri ? strlen(uri) : 0, 0);
@@ -315,8 +315,8 @@ int main(int argc, char **argv) {
   init_resources( ctx );
 
   LDAP *ld = NULL;
-  int ret;
-  if (ret = init_ldap(ld)) {
+  int ret = init_ldap(ld);
+  if (ret) {
     fprintf( stderr, " failed: %s (%d)\n", ldap_err2string(ret), ret );
     return -1;
   }
