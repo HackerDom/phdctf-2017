@@ -72,29 +72,27 @@ static void hnd_register_lock(
   memset(floor, 0, 8);
   memset(room, 0, 8);
 
-  if (request) {
-    coap_opt_t *option = coap_check_option(request, COAP_OPTION_URI_QUERY, &opt_iter);
-    while (option) {
-      char buf[1024];
-      memset(buf, 0, 1024);
-      strncpy(buf, (char *)COAP_OPT_VALUE(option), std::min(1024, (int)COAP_OPT_LENGTH(option)));
-      char *eq = strchr((char *)buf, '=');
-      if (eq) {
-        *eq = 0;
-        if (0 == strcmp("model", buf)) {
-          strncpy(model, eq + 1, std::min(64, (int)strlen(eq + 1)));
-        }
-        if (0 == strcmp("floor", buf)) {
-          strncpy(floor, eq + 1, std::min(8, (int)strlen(eq + 1)));
-        }
-        if (0 == strcmp("room", buf)) {
-          strncpy(room, eq + 1, std::min(8, (int)strlen(eq + 1)));
-        }
+  coap_opt_t *option = coap_check_option(request, COAP_OPTION_URI_QUERY, &opt_iter);
+  while (option) {
+    char buf[1024];
+    memset(buf, 0, 1024);
+    strncpy(buf, (char *)COAP_OPT_VALUE(option), std::min(1024, (int)COAP_OPT_LENGTH(option)));
+    char *eq = strchr((char *)buf, '=');
+    if (eq) {
+      *eq = 0;
+      if (0 == strcmp("model", buf)) {
+        strncpy(model, eq + 1, std::min(64, (int)strlen(eq + 1)));
       }
-      option = coap_option_next(&opt_iter);
+      if (0 == strcmp("floor", buf)) {
+        strncpy(floor, eq + 1, std::min(8, (int)strlen(eq + 1)));
+      }
+      if (0 == strcmp("room", buf)) {
+        strncpy(room, eq + 1, std::min(8, (int)strlen(eq + 1)));
+      }
     }
-    printf("hnd_register_lock(): model='%s', floor='%s', room='%s'\n", model, floor, room);
+    option = coap_option_next(&opt_iter);
   }
+  printf("hnd_register_lock(): model='%s', floor='%s', room='%s'\n", model, floor, room);
 
   send_response(response, 205, "TODO");
 }
@@ -115,29 +113,27 @@ static void hnd_add_card(
   memset(card, 0, 64);
   memset(tag, 0, 64);
 
-  if (request) {
-    coap_opt_t *option = coap_check_option(request, COAP_OPTION_URI_QUERY, &opt_iter);
-    while (option) {
-      char buf[1024];
-      memset(buf, 0, 1024);
-      strncpy(buf, (char *)COAP_OPT_VALUE(option), std::min(1024, (int)COAP_OPT_LENGTH(option)));
-      char *eq = strchr((char *)buf, '=');
-      if (eq) {
-        *eq = 0;
-        if (0 == strcmp("lock", buf)) {
-          strncpy(lock, eq + 1, std::min(64, (int)strlen(eq + 1)));
-        }
-        if (0 == strcmp("card", buf)) {
-          strncpy(card, eq + 1, std::min(8, (int)strlen(eq + 1)));
-        }
-        if (0 == strcmp("tag", buf)) {
-          strncpy(tag, eq + 1, std::min(8, (int)strlen(eq + 1)));
-        }
+  coap_opt_t *option = coap_check_option(request, COAP_OPTION_URI_QUERY, &opt_iter);
+  while (option) {
+    char buf[1024];
+    memset(buf, 0, 1024);
+    strncpy(buf, (char *)COAP_OPT_VALUE(option), std::min(1024, (int)COAP_OPT_LENGTH(option)));
+    char *eq = strchr((char *)buf, '=');
+    if (eq) {
+      *eq = 0;
+      if (0 == strcmp("lock", buf)) {
+        strncpy(lock, eq + 1, std::min(64, (int)strlen(eq + 1)));
       }
-      option = coap_option_next(&opt_iter);
+      if (0 == strcmp("card", buf)) {
+        strncpy(card, eq + 1, std::min(8, (int)strlen(eq + 1)));
+      }
+      if (0 == strcmp("tag", buf)) {
+        strncpy(tag, eq + 1, std::min(8, (int)strlen(eq + 1)));
+      }
     }
-    printf("hnd_add_card(): lock='%s', card='%s', tag='%s'\n", lock, card, tag);
+    option = coap_option_next(&opt_iter);
   }
+  printf("hnd_add_card(): lock='%s', card='%s', tag='%s'\n", lock, card, tag);
 
   send_response(response, 205, "TODO");
 }
@@ -156,26 +152,24 @@ static void hnd_get_card(
   memset(lock, 0, 64);
   memset(card, 0, 64);
 
-  if (request) {
-    coap_opt_t *option = coap_check_option(request, COAP_OPTION_URI_QUERY, &opt_iter);
-    while (option) {
-      char buf[1024];
-      memset(buf, 0, 1024);
-      strncpy(buf, (char *)COAP_OPT_VALUE(option), std::min(1024, (int)COAP_OPT_LENGTH(option)));
-      char *eq = strchr((char *)buf, '=');
-      if (eq) {
-        *eq = 0;
-        if (0 == strcmp("lock", buf)) {
-          strncpy(lock, eq + 1, std::min(64, (int)strlen(eq + 1)));
-        }
-        if (0 == strcmp("card", buf)) {
-          strncpy(card, eq + 1, std::min(8, (int)strlen(eq + 1)));
-        }
+  coap_opt_t *option = coap_check_option(request, COAP_OPTION_URI_QUERY, &opt_iter);
+  while (option) {
+    char buf[1024];
+    memset(buf, 0, 1024);
+    strncpy(buf, (char *)COAP_OPT_VALUE(option), std::min(1024, (int)COAP_OPT_LENGTH(option)));
+    char *eq = strchr((char *)buf, '=');
+    if (eq) {
+      *eq = 0;
+      if (0 == strcmp("lock", buf)) {
+        strncpy(lock, eq + 1, std::min(64, (int)strlen(eq + 1)));
       }
-      option = coap_option_next(&opt_iter);
+      if (0 == strcmp("card", buf)) {
+        strncpy(card, eq + 1, std::min(8, (int)strlen(eq + 1)));
+      }
     }
-    printf("hnd_get_card(): lock='%s', card='%s'\n", lock, card);
+    option = coap_option_next(&opt_iter);
   }
+  printf("hnd_get_card(): lock='%s', card='%s'\n", lock, card);
 
   send_response(response, 205, "TODO");
 }
