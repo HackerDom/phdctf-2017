@@ -14,6 +14,8 @@
 #include <errno.h>
 #include <signal.h>
 #include <algorithm>
+#include <time.h>
+#include <stdlib.h>
 
 #define LDAP_DEPRECATED 1
 #include <lber.h>
@@ -26,8 +28,16 @@ extern "C" {
 }
 
 #define COAP_RESOURCE_CHECK_TIME 2
+#define LOCK_ID_LEN 10
 
 char ldap_url[]      = "ldap://127.0.0.1:389";
+char ldap_root[]     = "dc=iot,dc=phdays,dc=com";
+char ldap_user[]     = "cn=admin,dc=iot,dc=phdays,dc=com";
+char ldap_pass[]     = "XfhC57uwby3plBWD";
+char charset[]       = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+int charset_len      = strlen(charset);
+
+static LDAP *ld = NULL;
 
 static int quit = 0;
 
@@ -40,9 +50,57 @@ static void send_response(coap_pdu_t *response, int code, const char *data) {
 
   response->hdr->code = COAP_RESPONSE_CODE(code);
 
-  coap_add_option(response, COAP_OPTION_CONTENT_TYPE, coap_encode_var_bytes(buf, COAP_MEDIATYPE_TEXT_PLAIN), buf);
-  coap_add_option(response, COAP_OPTION_MAXAGE, coap_encode_var_bytes(buf, 0x2ffff), buf);
-  coap_add_data(response, strlen(data), (unsigned char *)data);
+  coap_add_option( response, COAP_OPTION_CONTENT_TYPE, coap_encode_var_bytes(buf, COAP_MEDIATYPE_TEXT_PLAIN), buf );
+  coap_add_option( response, COAP_OPTION_MAXAGE, coap_encode_var_bytes(buf, 0x2ffff), buf );
+  coap_add_data( response, strlen(data), (unsigned char *)data );
+
+  fprintf( stderr, "   -> %d / %s\n", code, data );
+}
+
+static int ldap_register_lock(
+  char *lock_id,
+  char *lock_model,
+  char *lock_floor,
+  char *lock_room)
+{
+  char dn[64];
+  sprintf( dn, "cn=%s,cn=locks,%s", lock_id, ldap_root );
+
+  LDAPMod OClass, LockModel, LockFloor, LockRoom, Timestamp;
+
+  char *oc_values[] = { "top", "device", "lockObject", NULL };
+  OClass.mod_op     = LDAP_MOD_ADD;
+  OClass.mod_type   = "objectClass";
+  OClass.mod_values = oc_values;
+
+  char *lm_values[] = { lock_model, NULL };
+  LockModel.mod_op     = LDAP_MOD_ADD;
+  LockModel.mod_type   = "lockModel";
+  LockModel.mod_values = lm_values;
+
+  char *lf_values[] = { lock_floor, NULL };
+  LockFloor.mod_op     = LDAP_MOD_ADD;
+  LockFloor.mod_type   = "lockFloor";
+  LockFloor.mod_values = lf_values;
+
+  char *lr_values[] = { lock_room, NULL };
+  LockRoom.mod_op     = LDAP_MOD_ADD;
+  LockRoom.mod_type   = "lockRoom";
+  LockRoom.mod_values = lr_values;
+
+  char *ts_values[] = { "199412161032Z", NULL }; // TODO
+  Timestamp.mod_op     = LDAP_MOD_ADD;
+  Timestamp.mod_type   = "timestamp";
+  Timestamp.mod_values = ts_values;
+
+  LDAPMod *NewEntry[6] = { &OClass, &LockModel, &LockFloor, &LockRoom, &Timestamp, NULL };
+
+  int ret = ldap_add( ld, dn, NewEntry );
+  if ( ret < 0 ) {
+    fprintf( stderr, "ldap_add failed\n" );
+    return -1;
+  }
+  return 0;
 }
 
 static void hnd_get_index(
@@ -92,9 +150,26 @@ static void hnd_register_lock(
     }
     option = coap_option_next(&opt_iter);
   }
-  printf("hnd_register_lock(): model='%s', floor='%s', room='%s'\n", model, floor, room);
 
-  send_response(response, 205, "TODO");
+  fprintf( stderr, "hnd_register_lock( model='%s', floor='%s', room='%s' )\n", model, floor, room );
+
+  if (strlen(model) == 0 || strlen(floor) == 0 || strlen(room) == 0) {
+    send_response(response, 400, "BAD PARAMS");
+    return;
+  }
+
+  char lock_id[LOCK_ID_LEN];
+  for (int i = 0; i < LOCK_ID_LEN - 1; ++i) {
+    lock_id[i] = charset[rand() % charset_len];
+  }
+  lock_id[LOCK_ID_LEN - 1] = 0;
+
+  if ( ldap_register_lock( lock_id, model, floor, room ) ) {
+    send_response( response, 500, "ERROR" );
+    return;
+  }
+
+  send_response( response, 205, lock_id );
 }
 
 static void hnd_add_card(
@@ -193,10 +268,9 @@ static void init_resources( coap_context_t *ctx )
   add_resource(ctx, COAP_REQUEST_GET,  "get_card",      hnd_get_card);
 }
 
-static void usage( const char *program ) {
-  const char *p;
-
-  p = strrchr( program, '/' );
+static void usage( const char *program )
+{
+  const char *p = strrchr( program, '/' );
   if ( p )
     program = ++p;
 
@@ -248,7 +322,8 @@ get_context(const char *node, const char *port) {
   return ctx;
 }
 
-int init_ldap(LDAP *ld) {
+int init_ldap()
+{
   int ret;
 
   ret = ldap_initialize( &ld, ldap_url );
@@ -264,7 +339,7 @@ int init_ldap(LDAP *ld) {
     return ret;
   }
 
-  ret = ldap_simple_bind_s( ld, NULL, NULL );
+  ret = ldap_simple_bind_s( ld, ldap_user, ldap_pass );
 	if (ret) {
 		fprintf( stderr, "ldap_simple_bind_s" );
 		return ret;
@@ -274,7 +349,29 @@ int init_ldap(LDAP *ld) {
   return 0;
 }
 
-int main(int argc, char **argv) {
+void init_random()
+{
+  unsigned int seed = time( NULL );
+  FILE *f = fopen( "/dev/urandom", "rb" );
+  if (!f) {
+    fprintf( stderr, "Warning: cannot open urandom\n" );
+  }
+  else {
+    for (int i = 0; i < 10; ++i) {
+      unsigned int val;
+      int count = fread( &val, sizeof(val), 1, f );
+      if ( count != 1 ) {
+        break;
+      }
+      seed ^= val;
+    }
+    fclose( f );
+  }
+  srand( seed );
+}
+
+int main(int argc, char **argv)
+{
   coap_context_t  *ctx;
   fd_set readfds;
   struct timeval tv, *timeout;
@@ -308,8 +405,7 @@ int main(int argc, char **argv) {
 
   init_resources( ctx );
 
-  LDAP *ld = NULL;
-  int ret = init_ldap(ld);
+  int ret = init_ldap();
   if (ret) {
     fprintf( stderr, " failed: %s (%d)\n", ldap_err2string(ret), ret );
     return -1;
@@ -318,6 +414,8 @@ int main(int argc, char **argv) {
   signal( SIGINT, handle_sigint );
 
   fprintf( stderr, "Starting doorlock server at %s:%s\n", addr_str, port_str);
+
+  init_random();
 
   while ( !quit ) {
     FD_ZERO( &readfds );
