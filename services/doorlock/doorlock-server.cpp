@@ -53,7 +53,7 @@ static void hnd_get_index(
               coap_pdu_t *request,
               str *token,
               coap_pdu_t *response) {
-  send_response(response, 205, "DOORLOCK Service");
+  send_response(response, 205, "DOORLOCK Service 5.19 built May 2017");
 }
 
 static void hnd_register_lock(
