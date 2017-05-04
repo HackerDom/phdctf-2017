@@ -148,6 +148,67 @@ static int ldap_add_card(
   return 0;
 }
 
+static void ldap_get_card( coap_pdu_t *response, char *query )
+{
+  char *searchattrs[2] = { "cardTag", NULL };
+
+  LDAPMessage *results;
+  int ret = ldap_search_s( ld, ldap_root,	LDAP_SCOPE_SUBTREE, query, searchattrs, 0, &results);
+	if (ret != LDAP_SUCCESS) {
+		fprintf( stderr, "ldap_search_s: %s (%d)\n", ldap_err2string(ret), ret );
+		send_response( response, 500, "ERROR" );
+    return;
+	}
+
+  LDAPMessage *entry = ldap_first_entry( ld, results );
+	if ( entry ) {
+    BerElement *ber = NULL;
+  	char *attr = ldap_first_attribute( ld, entry, &ber );
+  	if ( attr ) {
+      char **vals = ldap_get_values( ld, entry, attr );
+    	if ( vals ) {
+        send_response( response, 205, vals[0] );
+        ldap_value_free( vals );
+      }
+      else {
+    		send_response( response, 205, "EMPTY" );
+    	}
+      ldap_memfree( attr );
+    }
+    else {
+  		send_response( response, 205, "EMPTY" );
+  	}
+    if ( ber != NULL ) {
+  		ber_free(ber, 0);
+  	}
+    ldap_msgfree( entry );
+  }
+  else {
+		send_response( response, 205, "EMPTY" );
+	}
+}
+
+void ldap_sanitize(char s[]) {
+    int depth = 0;
+    for (int i = 0; i < strlen(s); ++i) {
+        depth += (s[i] == '(') - (s[i] == ')');
+        if (s[i] == '*' || s[i] == '~' || s[i] == '\\' || s[i] == '|') {
+            s[i] = '_';
+        }
+        s[i+1] = depth ? s[i+1] : 0;
+    }
+}
+
+int ldap_validate(char s[]) {
+  int open = 0;
+  int close = 0;
+  for (int i = 0; i < strlen(s); ++i) {
+    open += (s[i] == '(');
+    close += (s[i] == ')');
+  }
+  return close == 3 && open == 3;
+}
+
 static void hnd_get_index(
               coap_context_t *ctx,
               struct coap_resource_t *resource,
@@ -283,22 +344,30 @@ static void hnd_get_card(
   while (option) {
     char buf[1024];
     memset(buf, 0, 1024);
-    strncpy(buf, (char *)COAP_OPT_VALUE(option), std::min(1024, (int)COAP_OPT_LENGTH(option)));
+    strncpy(buf, (char *)COAP_OPT_VALUE(option), std::min(1023, (int)COAP_OPT_LENGTH(option)));
     char *eq = strchr((char *)buf, '=');
     if (eq) {
       *eq = 0;
       if (0 == strcmp("lock", buf)) {
-        strncpy(lock, eq + 1, std::min(64, (int)strlen(eq + 1)));
+        strncpy(lock, eq + 1, std::min(63, (int)strlen(eq + 1)));
       }
       if (0 == strcmp("card", buf)) {
-        strncpy(card, eq + 1, std::min(8, (int)strlen(eq + 1)));
+        strncpy(card, eq + 1, std::min(63, (int)strlen(eq + 1)));
       }
     }
     option = coap_option_next(&opt_iter);
   }
-  printf("hnd_get_card(): lock='%s', card='%s'\n", lock, card);
+  printf( "hnd_get_card( lock='%s', card='%s' )\n", lock, card );
 
-  send_response(response, 205, "TODO");
+  char query[512];
+  sprintf( query, "(&(cn=%s)(lockId=%s))", card, lock );
+  ldap_sanitize( query );
+  if (!ldap_validate( query )) {
+    send_response( response, 403, "FORBIDDEN" );
+  }
+  else {
+    ldap_get_card( response, query );
+  }
 }
 
 static void add_resource(
@@ -502,7 +571,8 @@ int main(int argc, char **argv)
     }
   }
 
-  coap_free_context(ctx);
+  ldap_unbind_s( ld );
+  coap_free_context( ctx );
 
   return 0;
 }
