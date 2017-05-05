@@ -108,7 +108,7 @@ static int ldap_add_card(
   char *card_id,
   char *card_tag)
 {
-  char dn[64];
+  char dn[256];
   sprintf( dn, "cn=%s,cn=%s,cn=locks,%s", card_id, lock_id, ldap_root );
 
   LDAPMod OClass, LockId, CardTag, CardOwner, Timestamp;
