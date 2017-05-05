@@ -63,6 +63,23 @@ services:
     links:
       - mqtt-broker
 
+  module:
+    image: thermometer-module
+    build:
+      context: module
+      args:
+        - http_proxy
+        - https_proxy
+        - no_proxy
+    hostname: module
+    container_name: module
+    depends_on:
+      - mqtt-broker
+    links:
+      - mqtt-broker
+    ports:
+      - "8888:8888"
+
 volumes:
   mysql-data:
   mosquitto-auth-plugin:

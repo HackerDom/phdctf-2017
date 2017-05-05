@@ -10,3 +10,6 @@
 [submodule "services/thermometer/tests/mqtt-anonymous-auth/paho.mqtt.c"]
 	path = services/thermometer/tests/mqtt-anonymous-auth/paho.mqtt.c
 	url = https://github.com/eclipse/paho.mqtt.c.git
+[submodule "services/thermometer/module/paho.mqtt.c"]
+	path = services/thermometer/module/paho.mqtt.c
+	url = https://github.com/eclipse/paho.mqtt.c.git

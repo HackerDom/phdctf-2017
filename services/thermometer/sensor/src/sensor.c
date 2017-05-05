@@ -10,6 +10,7 @@
 #define PAYLOAD     "Hello World!"
 #define QOS         1
 #define TIMEOUT     10000L
+#define AUTHORIZATION_REQUEST_TOPIC "house/authorization"
 
 #define MQTT_
 
@@ -77,16 +78,66 @@ int generate_init_temperature(const int min, const int max)
 
 int generate_next_temperature(const int current, const int min, const int max)
 {
-   return fmin(fmax(current + round(((float)rand()/(float)(RAND_MAX)) * 2.0 - 1), min), max);
+    return fmin(fmax(current + round(((float)rand()/(float)(RAND_MAX)) * 2.0 - 1), min), max);
 }
+
+int send_authorization_request(const char* client_id, MQTTClient client)
+{
+    MQTTClient_message authorization_request = MQTTClient_message_initializer;
+    authorization_request.payload = client_id;
+    authorization_request.payloadlen = strlen(client_id);
+    authorization_request.qos = 1;
+    authorization_request.retained = 0;
+
+    MQTTClient_deliveryToken token;
+
+    printf("Sending authorization request to topic '%s' for ClientID '%s'\n", AUTHORIZATION_REQUEST_TOPIC, client_id);
+    MQTTClient_publishMessage(client, AUTHORIZATION_REQUEST_TOPIC, &authorization_request, &token);
+
+    int rc;
+    rc = MQTTClient_waitForCompletion(client, token, TIMEOUT);
+    printf("Message with delivery token %d delivered\n", token);
+
+    return rc;
+}
+
+/*
+char* get_authorization_response(const char* client_id, MQTTClient client)
+{
+}*/
 
 int main(int argc, char* argv[])
 {
+    MQTTClient client;
+    MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
+    int rc;
+
     char* client_id = generate_random_id();
+
+    MQTTClient_create(&client, ADDRESS, client_id, MQTTCLIENT_PERSISTENCE_NONE, NULL);
+    conn_opts.keepAliveInterval = 20;
+    conn_opts.cleansession = 0;
+
+    if ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS)
+    {
+        printf("Failed to connect, return code %d\n", rc);
+        return -1;
+    }
+
+    if ((rc = send_authorization_request(client_id, client)) != MQTTCLIENT_SUCCESS)
+    {
+        printf("Failed to send authorization request, return code %d\n", rc);
+        return -1;
+    }
+
+    MQTTClient_disconnect(client, TIMEOUT);
+    MQTTClient_destroy(&client);
+    free(client_id);
+
+    /*
     //init(client_id);
-    //free(client_id);
-    const int min_temperature = 10;
-    const int max_temperature = 40;
+    //const int min_temperature = 10;
+    //const int max_temperature = 40;
     int temperature = generate_init_temperature(min_temperature, max_temperature);
     printf("Temperature: %d\n", temperature);
 
@@ -95,6 +146,7 @@ int main(int argc, char* argv[])
         temperature = generate_next_temperature(temperature, min_temperature, max_temperature);
         printf("Next temperature: %d\n", temperature);
     }
+    */
     return 0;
 }
 

@@ -1,6 +1,6 @@
-all: server.c
-	gcc -o server server.c -I/usr/include/ -lmicrohttpd
+all: module.c
+	gcc -o module module.c -I/usr/include/ -lmicrohttpd -lpaho-mqtt3c
 install:
-	cp server /usr/bin/
+	cp module /usr/bin/
 clean:
-	rm -f server
+	rm -f module
