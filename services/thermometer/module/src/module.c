@@ -7,13 +7,13 @@
 #include <microhttpd.h>
 #include "MQTTClient.h"
 
+#include <sys/timeb.h>
+
 #define PORT        8888
 #define ADDRESS     "tcp://mqtt-broker:1883"
-#define CLIENTID    "MODULE"
+#define CLIENTID    "MODULE1"
 #define QOS         1
 #define AUTHORIZATION_REQUEST_TOPIC "house/authorization"
-
-volatile MQTTClient_deliveryToken deliveredtoken;
 
 int answer_to_connection (void *cls, struct MHD_Connection *connection,
                           const char *url,
@@ -66,7 +66,6 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
 void delivered(void *context, MQTTClient_deliveryToken dt)
 {
     printf("Message with token value %d delivery confirmed\n", dt);
-    deliveredtoken = dt;
 }
 
 int msgarrvd(void *context, char *topicName, int topicLen, MQTTClient_message *message)
@@ -95,37 +94,68 @@ void connlost(void *context, char *cause)
     printf("     cause: %s\n", cause);
 }
 
+int process_message(MQTTClient* client)
+{
+    char* topicName = NULL;
+    int topicLen;
+    MQTTClient_message* message = NULL;
+    int rc;
+
+    rc = MQTTClient_receive(client, &topicName, &topicLen, &message, 1000);
+    
+    if (message)
+    {
+	printf("%s\t", topicName);
+	printf("%.*s", message->payloadlen, (char*)message->payload);
+	MQTTClient_freeMessage(&message);
+	MQTTClient_free(topicName);
+    }
+
+    return rc;
+}
+
 int main ()
 {
     MQTTClient client;
     MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
+    //MQTTClient_deliveryToken deliveredtoken;
     int rc;
     int ch;
 
     MQTTClient_create(&client, ADDRESS, CLIENTID, MQTTCLIENT_PERSISTENCE_NONE, NULL);
     conn_opts.keepAliveInterval = 20;
-    conn_opts.cleansession = 1;
+    conn_opts.cleansession = 0;
 
-    MQTTClient_setCallbacks(client, NULL, connlost, msgarrvd, delivered);
+    MQTTClient_setCallbacks(client, NULL, NULL, msgarrvd, NULL);
 
     if ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS)
     {
         printf("Failed to connect, return code %d\n", rc);
         exit(EXIT_FAILURE);
     }
-    printf("Subscribing to topic %s\nfor client %s using QoS%d\n\n"
-           "Press Q<Enter> to quit\n\n", AUTHORIZATION_REQUEST_TOPIC, CLIENTID, QOS);
-    MQTTClient_subscribe(client, AUTHORIZATION_REQUEST_TOPIC, QOS);
+
+    rc = MQTTClient_subscribe(client, "#", 0);
+
+    sleep(20000);
+
+    rc = MQTTClient_unsubscribe(client, "#");
+
+    //do
+    //{
+        //rc = process_message(&client);
+        //printf("Processing result: %d\n", rc);
+
+        //if (rc == -1)
+        //{
+        //    MQTTClient_connect(client, &conn_opts);
+        //}
+    //}
+    //while(1);
 
     //struct MHD_Daemon *daemon;
 
     //daemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY, PORT, NULL, NULL, &answer_to_connection, NULL, MHD_OPTION_END);
     //if (NULL == daemon) return 1;
-
-    do 
-    {
-        ch = getchar();
-    } while(ch!='Q' && ch != 'q');
 
     //MHD_stop_daemon (daemon);
 
