@@ -1,40 +1,53 @@
 version: '3'
+
 services:
   mqtt-db:
-    image: "mysql:latest"
+    image: mqtt-db
+    build:
+      context: mqtt-db
+      args:
+        - http_proxy
+        - https_proxy
+        - no_proxy
     hostname: mqtt-db
     container_name: mqtt-db
+    volumes:
+      - mysql-data:/var/lib/mysql
     ports:
       - "3306"
-    environment:
-      MYSQL_ROOT_PASSWORD: kooj2ahj0eelaipeicahquiGehahsho1
-      MYSQL_DATABASE: mqtt
-  mosquitto-db-init:
-    build: mosquitto-db-init
-    image: mosquitto-db-init
-    container_name: mosquitto-db-init
-    depends_on:
-      - mqtt-db
-    links:
-      - mqtt-db
-    environment:
-      MYSQL_ROOT_PASSWORD: kooj2ahj0eelaipeicahquiGehahsho1
+
+  mosquitto-auth-plugin:
+    build:
+      context: mosquitto-auth-plugin
+      args:
+        - http_proxy
+        - https_proxy
+        - no_proxy
+    image: mosquitto-auth-plugin
+    container_name: mosquitto-auth-plugin
     volumes:
-      - ./mosquitto-db-init/scripts:/scripts
-    command: bash -c "wait-for-it.sh -t 0 mqtt-db:3306 -- mysql --host=mqtt-db --port=3306 --user=root --password=kooj2ahj0eelaipeicahquiGehahsho1 mqtt < /scripts/init-db.sql"
+      - mosquitto-auth-plugin:/auth-plugin
+    command: cp /usr/mosquitto-auth-plug/auth-plug.so /auth-plugin
+
   mqtt-broker:
-    build: mosquitto
+    build:
+      context: mosquitto
+      args:
+        - http_proxy
+        - https_proxy
+        - no_proxy
     image: mosquitto
     hostname: mqtt-broker
     container_name: mqtt-broker
     depends_on:
       - mqtt-db
-      - mosquitto-db-init
     ports:
       - "1883:1883"
+    volumes:
+      - mosquitto-auth-plugin:/auth-plugin:ro
     links:
       - mqtt-db
-    command: ["wait-for-it.sh", "-t", "0", "mqtt-db:3306", "--", "mosquitto", "-v", "-c", "/etc/mosquitto/mosquitto.conf"]
+
 #  sensor:
 #    image: thermometer-sensor
 #    hostname: sensor
@@ -42,3 +55,7 @@ services:
 #    depends_on:
 #      - mqtt-broker
 #    command: ["wait-for-it.sh", "-t", "0", "mqtt-broker:1883", "--", "/usr/bin/thermometer"]
+
+volumes:
+  mysql-data:
+  mosquitto-auth-plugin:

@@ -13,3 +13,5 @@ WORKDIR /usr/mosquitto
 RUN make binary
 WORKDIR /usr/mosquitto-auth-plug
 RUN make
+
+VOLUME ["/auth-plugin"]
