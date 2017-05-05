@@ -11,7 +11,7 @@ LOCK_ID=`echo -n | coap post "coap://127.0.0.1/register_lock?model=$MODEL&floor=
 echo "LOCK_ID: $LOCK_ID"
 
 CARD_ID=`< /dev/urandom tr -dc 1-3 | head -c1`
-CARD_TAG=`< /dev/urandom tr -dc A-Z= | head -c32`  # FLAG
+CARD_TAG=TAG_`< /dev/urandom tr -dc A-Z | head -c31`=  # FLAG
 
 echo -n | coap post "coap://127.0.0.1/add_card?lock=$LOCK_ID&card=$CARD_ID&tag=$CARD_TAG"
 
