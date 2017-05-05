@@ -29,11 +29,13 @@ class DoorlockClient:
             t_start = datetime.datetime.now()
             response = await protocol.request(request).response
         except Exception as e:
-            t_diff = (datetime.datetime.now() - t_start).microseconds/1000
+            diff = datetime.datetime.now() - t_start;
+            t_diff = diff.seconds*1000 + diff.microseconds/1000
             self._log.error('Exception: %s in %d ms', e, t_diff)
             return -1, None
         else:
-            t_diff = (datetime.datetime.now() - t_start).microseconds/1000
+            diff = datetime.datetime.now() - t_start;
+            t_diff = diff.seconds*1000 + diff.microseconds/1000
             self._log.info('<-- [%s] %r in %d ms', response.code, response.payload, t_diff)
             return response.code, response.payload.decode('ascii')
 

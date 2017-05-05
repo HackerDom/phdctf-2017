@@ -53,7 +53,8 @@ tasks = [make_task(host) for i in range(count)]
 loop.run_until_complete(asyncio.wait(tasks))
 
 req_per_count = 3
-sec = (datetime.datetime.now() - t_start).microseconds/1e6
+diff = datetime.datetime.now() - t_start;
+sec = diff.seconds + diff.microseconds/1e6
 log_str = '%d RPS (%d req in %f sec)' % (req_per_count*count/sec, req_per_count*count, sec)
 logging.getLogger().info(log_str)
 logging.getLogger().info('OK: %d, ERR: %d', COUNT_OK, COUNT_ERR)
