@@ -95,9 +95,9 @@ static int ldap_register_lock(
 
   LDAPMod *NewEntry[6] = { &OClass, &LockModel, &LockFloor, &LockRoom, &Timestamp, NULL };
 
-  int ret = ldap_add( ld, dn, NewEntry );
-  if ( ret < 0 ) {
-    fprintf( stderr, "ldap_add failed\n" );
+  int ret = ldap_add_s( ld, dn, NewEntry );
+  if ( ret != LDAP_SUCCESS ) {
+    fprintf( stderr, "ldap_add_s failed: %s (%d)\n", ldap_err2string(ret), ret );
     return -1;
   }
   return 0;
@@ -140,9 +140,9 @@ static int ldap_add_card(
 
   LDAPMod *NewEntry[6] = { &OClass, &LockId, &CardTag, &CardOwner, &Timestamp, NULL };
 
-  int ret = ldap_add( ld, dn, NewEntry );
-  if ( ret < 0 ) {
-    fprintf( stderr, "ldap_add failed\n" );
+  int ret = ldap_add_s( ld, dn, NewEntry );
+  if ( ret != LDAP_SUCCESS ) {
+    fprintf( stderr, "ldap_add_s failed: %s (%d)\n", ldap_err2string(ret), ret );
     return -1;
   }
   return 0;
