@@ -11,3 +11,5 @@ Base DN:  dc=iot,dc=phdays,dc=com
 Username: cn=admin,dc=iot,dc=phdays,dc=com
 Password: XfhC57uwby3plBWD
 
+sudo ./ldap-install.sh
+./ldap-init.sh
