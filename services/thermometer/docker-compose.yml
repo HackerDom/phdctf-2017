@@ -48,13 +48,20 @@ services:
     links:
       - mqtt-db
 
-#  sensor:
-#    image: thermometer-sensor
-#    hostname: sensor
-#    container_name: sensor
-#    depends_on:
-#      - mqtt-broker
-#    command: ["wait-for-it.sh", "-t", "0", "mqtt-broker:1883", "--", "/usr/bin/thermometer"]
+  sensor:
+    image: thermometer-sensor
+    build:
+      context: sensor
+      args:
+        - http_proxy
+        - https_proxy
+        - no_proxy
+    hostname: sensor
+    container_name: sensor
+    depends_on:
+      - mqtt-broker
+    links:
+      - mqtt-broker
 
 volumes:
   mysql-data:
