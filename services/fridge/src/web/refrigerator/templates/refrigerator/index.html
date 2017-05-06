@@ -1,6 +1,7 @@
 {% extends 'layout.html' %}
 
 {% load bootstrap %}
+{% load staticfiles %}
 
 {% block content %}
     {% include '_jumbotron.html' %}
@@ -11,7 +12,9 @@
                 {% for refrigerator in refrigerators %}
                     <div class="col-12 col-md-6 col-lg-4">
                         <div class="card">
-                            <img src="//placehold.it/500x280" alt="{{ refrigerator.title }}" class="card-img-top"/>
+                            {% with image_id=refrigerator.image_id|stringformat:'s' %}
+                                <img src="{% static 'images/refrigerators/'|add:image_id|add:'.jpg' %}" alt="{{ refrigerator.title }}" class="card-img-top"/>
+                            {% endwith %}
                             <div class="card-block">
                                 <h4 class="card-title" title="{{ refrigerator.title }}">
                                     {{ refrigerator.title|truncatechars:20 }}
@@ -51,7 +54,6 @@
                 {% for recipe in recipes %}
                     <div class="col-12 col-md-6 col-lg-4">
                         <div class="card">
-                            <img src="//placehold.it/500x280" alt="{{ recipe.title }}" class="card-img-top"/>
                             <div class="card-block">
                                 <h4 class="card-title" title="{{ recipe.title }}">
                                     {{ recipe.title|truncatechars:20 }}

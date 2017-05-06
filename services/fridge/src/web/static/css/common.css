@@ -31,6 +31,10 @@
     margin-bottom: 15px;
 }
 
+.card-img-top {
+    max-height: 350px;
+}
+
 footer {
     padding-top: 3rem;
     padding-bottom: 3rem;
