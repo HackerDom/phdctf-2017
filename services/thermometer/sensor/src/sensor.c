@@ -11,6 +11,7 @@
 #define QOS         1
 #define TIMEOUT     10000L
 #define AUTHORIZATION_REQUEST_TOPIC "house/authorization"
+#define AUTHORIZATION_RESPONSE_TOPIC_PREFIX "house/authorization/"
 
 char* generate_random_id()
 {
@@ -36,9 +37,30 @@ int generate_next_temperature(const int current, const int min, const int max)
     return fmin(fmax(current + round(((float)rand()/(float)(RAND_MAX)) * 2.0 - 1), min), max);
 }
 
+void unsubscribe_from_topic(MQTTClient* mqtt_client, char *topic)
+{
+    int rc;
+
+    if ((rc = MQTTClient_unsubscribe(*mqtt_client, topic)) != MQTTCLIENT_SUCCESS)
+    {
+        printf("Failed to unsubscribe from topic '%s', return code %d.\n", topic, rc);
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Unsubscribed from topic '%s'.\n", topic);
+}
+
+volatile char* password = NULL;
+
 int process_mqtt_message(void *context, char *topic_name, int topic_len, MQTTClient_message *message)
 {
-    printf("Message from topic '%s' arrived.\n", topic_name);
+    if (strncmp(AUTHORIZATION_RESPONSE_TOPIC_PREFIX, topic_name, strlen(AUTHORIZATION_RESPONSE_TOPIC_PREFIX)) == 0)
+    {
+        printf("Authorization response: '%s'.\n", message->payload);
+        password = strdup(message->payload);
+    }
+    else
+        printf("Message from topic '%s' arrived.\n", topic_name);
 
     MQTTClient_freeMessage(&message);
     MQTTClient_free(topic_name);
@@ -87,19 +109,6 @@ void subscribe_to_topic(MQTTClient* mqtt_client, char *topic)
     }
 
     printf("Subscribed to topic '%s'.\n", topic);
-}
-
-void unsubscribe_from_topic(MQTTClient* mqtt_client, char *topic)
-{
-    int rc;
-
-    if ((rc = MQTTClient_unsubscribe(*mqtt_client, topic)) != MQTTCLIENT_SUCCESS)
-    {
-        printf("Failed to unsubscribe from topic '%s', return code %d.\n", topic, rc);
-        exit(EXIT_FAILURE);
-    }
-
-    printf("Unsubscribed from topic '%s'.\n", topic);
 }
 
 void process_connection_lost(void *context, char *cause)
@@ -186,18 +195,27 @@ int main(int argc, char* argv[])
 
     MQTTClient anonymous_mqtt_client;
     init_mqtt_client(&anonymous_mqtt_client, client_id);
+
     set_mqtt_callbacks(&anonymous_mqtt_client);
     connect_to_mqtt_broker(&anonymous_mqtt_client);
 
-    char *password_topic = (char *)malloc((strlen("house/authorization/") + strlen(client_id) + 1) * sizeof(char));
-    sprintf(password_topic, "house/authorization/%s", client_id);
+    char *password_topic = (char *)malloc((strlen(AUTHORIZATION_RESPONSE_TOPIC_PREFIX) + strlen(client_id) + 1) * sizeof(char));
+    sprintf(password_topic, "%s%s", AUTHORIZATION_RESPONSE_TOPIC_PREFIX, client_id);
     subscribe_to_topic(&anonymous_mqtt_client, password_topic);
 
-    publish_message(&anonymous_mqtt_client, AUTHORIZATION_REQUEST_TOPIC, client_id, strlen(client_id) + 1);
+    do
+    {
+        publish_message(&anonymous_mqtt_client, AUTHORIZATION_REQUEST_TOPIC, client_id, strlen(client_id) + 1);
+        sleep(1);
+    }
+    while(!stop && password == NULL);
 
-    sleep(100);
+    if (password != NULL)
+    {
+        unsubscribe_from_topic(&anonymous_mqtt_client, password_topic);
+        free((void *)password);
+    }
 
-    unsubscribe_from_topic(&anonymous_mqtt_client, password_topic);
     free(password_topic);
 
     disconnect_from_mqtt_broker(&anonymous_mqtt_client);
