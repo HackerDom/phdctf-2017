@@ -2,12 +2,8 @@ CREATE DATABASE IF NOT EXISTS mqtt;
 
 USE mqtt;
 
-DROP USER IF EXISTS 'mqtt_broker'@'%';
-CREATE USER 'mqtt_broker'@'%' IDENTIFIED BY 'UFRzFk2Lw5dd9h4u';
-FLUSH PRIVILEGES;
-
-GRANT SELECT ON mqtt.* TO 'mqtt_broker'@'%' WITH GRANT OPTION;
-FLUSH PRIVILEGES;
+CREATE USER IF NOT EXISTS 'mqtt_broker'@'%' IDENTIFIED BY 'UFRzFk2Lw5dd9h4u';
+CREATE USER IF NOT EXISTS 'thermometer_module'@'%' IDENTIFIED BY '4VS6yKnPF9eLoZkB';
 
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER AUTO_INCREMENT,
@@ -29,4 +25,12 @@ CREATE TABLE IF NOT EXISTS acls (
 
 CREATE UNIQUE INDEX IF NOT EXISTS acls_user_topic ON acls (username, topic(228));
 
+GRANT SELECT ON mqtt.users TO 'mqtt_broker'@'%' WITH GRANT OPTION;
+GRANT SELECT ON mqtt.acls TO 'mqtt_broker'@'%' WITH GRANT OPTION;
+
+GRANT INSERT,UPDATE ON mqtt.users TO 'thermometer_module'@'%' WITH GRANT OPTION;
+GRANT INSERT,UPDATE ON mqtt.acls TO 'thermometer_module'@'%' WITH GRANT OPTION;
+FLUSH PRIVILEGES;
+
 INSERT INTO acls (username, topic, rw) VALUES ('anonymous', 'house/authorization', 2);
+INSERT INTO acls (username, topic, rw) VALUES ('anonymous', 'house/authorization/%c', 1);
