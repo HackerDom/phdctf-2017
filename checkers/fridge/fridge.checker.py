@@ -44,11 +44,16 @@ class FoodType(collections.namedtuple('FoodType', ['name', 'description', 'unit'
 class Refrigerator(collections.namedtuple('Refrigerator', ['id', 'title', 'description']), DictedModel):
     @staticmethod
     def generate_random(**kwargs):
-        title = checklib.random.string(string.ascii_lowercase, range(10, 20),
-                                       first_uppercase=True)
+        title = checklib.random.string(
+            string.ascii_lowercase,
+            range(10, 20),
+            first_uppercase=True
+        )
         description = kwargs.get('description', checklib.random.string(
-            string.ascii_lowercase + ' ' * 5, range(100, 200),
-            first_uppercase=True))
+            string.ascii_lowercase + ' ' * 5,
+            range(100, 200),
+            first_uppercase=True
+        ))
 
         return Refrigerator(None, title, description)
 
@@ -59,11 +64,16 @@ class Refrigerator(collections.namedtuple('Refrigerator', ['id', 'title', 'descr
 class Recipe(collections.namedtuple('Recipe', ['id', 'title', 'description']), DictedModel):
     @staticmethod
     def generate_random(**kwargs):
-        title = checklib.random.string(string.ascii_lowercase, range(10, 20),
-                                       first_uppercase=True)
+        title = checklib.random.string(
+            string.ascii_lowercase,
+            range(10, 20),
+            first_uppercase=True
+        )
         description = kwargs.get('description', checklib.random.string(
-            string.ascii_lowercase + ' ' * 10, range(100, 200),
-            first_uppercase=True))
+            string.ascii_lowercase + ' ' * 10,
+            range(100, 200),
+            first_uppercase=True
+        ))
 
         return Recipe(None, title, description)
 
