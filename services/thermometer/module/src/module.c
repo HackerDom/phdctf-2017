@@ -14,6 +14,7 @@
 #define MQTT_MODULE_CLIENT_ID       "temperature-module"
 #define QOS                         1
 #define AUTHORIZATION_REQUEST_TOPIC "house/authorization"
+#define TIMEOUT                     10000L
 
 int answer_to_connection (void *cls, struct MHD_Connection *connection,
                           const char *url,
@@ -63,11 +64,42 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
     return ret;
 }
 
+void publish_message(const MQTTClient* client, char* topic, void* payload, int payloadlen)
+{
+    int rc;
+    MQTTClient_message msg = MQTTClient_message_initializer;
+    msg.payload = payload;
+    msg.payloadlen = payloadlen;
+    msg.qos = 1;
+    msg.retained = 0;
+
+    MQTTClient_deliveryToken token;
+
+    if ((rc = MQTTClient_publishMessage(*client, topic, &msg, &token)) != MQTTCLIENT_SUCCESS)
+    {
+        printf("Failed to publish message to topic '%s', return code %d.\n", topic, rc);
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Published message to topic '%s'.\n", topic);
+}
+
 int process_mqtt_message(void *context, char *topic_name, int topic_len, MQTTClient_message *message)
 {
     if (strcmp(topic_name, AUTHORIZATION_REQUEST_TOPIC) == 0) 
     {
         printf("Authorization request for client_id '%s'.\n", message->payload);
+
+        if (context != NULL)
+        {
+            MQTTClient* mqtt_client = (MQTTClient*)context;
+
+            char *client_authorization_topic = (char *)malloc((strlen("house/authorization/") + strlen(message->payload) + 1) * sizeof(char));
+            sprintf(client_authorization_topic, "house/authorization/%s", message->payload);
+            char* password = "Pass";
+            publish_message(mqtt_client, client_authorization_topic, password, strlen(password) + 1);
+            free(client_authorization_topic);
+        }
     }
     else
     {
@@ -87,7 +119,6 @@ void connect_to_mqtt_broker(MQTTClient* mqtt_client)
     conn_opts.keepAliveInterval = 20;
     conn_opts.cleansession = 0;
     conn_opts.connectTimeout = 10;
-    conn_opts.retryInterval = 1;
 
     do {
         if ((rc = MQTTClient_connect(*mqtt_client, &conn_opts)) != MQTTCLIENT_SUCCESS)
@@ -98,7 +129,7 @@ void connect_to_mqtt_broker(MQTTClient* mqtt_client)
     }
     while (rc != MQTTCLIENT_SUCCESS);
 
-    printf("Connected to '%s'\n", MQTT_BROKER_ADDRESS);
+    printf("Connected to '%s'.\n", MQTT_BROKER_ADDRESS);
 }
 
 void disconnect_from_mqtt_broker(MQTTClient* mqtt_client)
@@ -111,17 +142,24 @@ void disconnect_from_mqtt_broker(MQTTClient* mqtt_client)
         printf("Disconnected from '%s'.\n", MQTT_BROKER_ADDRESS);
 }
 
+volatile MQTTClient_deliveryToken deliveredtoken;
+void process_delivered(void *context, MQTTClient_deliveryToken dt)
+{
+    printf("Message with token value %d delivery confirmed.\n", dt);
+    deliveredtoken = dt;
+}
+
 void subscribe_to_topic(MQTTClient* mqtt_client, char *topic)
 {
     int rc;
 
-    if ((rc = MQTTClient_subscribe(*mqtt_client, AUTHORIZATION_REQUEST_TOPIC, 0)) != MQTTCLIENT_SUCCESS)
+    if ((rc = MQTTClient_subscribe(*mqtt_client, topic, 0)) != MQTTCLIENT_SUCCESS)
     {
-        printf("Failed to subscribe to topic '%s', return code %d.\n", AUTHORIZATION_REQUEST_TOPIC, rc);
+        printf("Failed to subscribe to topic '%s', return code %d.\n", topic, rc);
         exit(EXIT_FAILURE);
     }
 
-    printf("Subscribed to topic '%s'\n", AUTHORIZATION_REQUEST_TOPIC);
+    printf("Subscribed to topic '%s'.\n", topic);
 }
 
 void unsubscribe_from_topic(MQTTClient* mqtt_client, char *topic)
@@ -163,7 +201,7 @@ void set_mqtt_callbacks(MQTTClient* mqtt_client)
 {
     int rc;
 
-    if ((rc = MQTTClient_setCallbacks(*mqtt_client, mqtt_client, process_connection_lost, process_mqtt_message, NULL)) != MQTTCLIENT_SUCCESS)
+    if ((rc = MQTTClient_setCallbacks(*mqtt_client, mqtt_client, process_connection_lost, process_mqtt_message, process_delivered)) != MQTTCLIENT_SUCCESS)
     {
         printf("Failed to set callbacks for MQTT client, return code %d.\n", rc);
         exit(EXIT_FAILURE);

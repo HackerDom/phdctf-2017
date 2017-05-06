@@ -4,15 +4,13 @@
 #include "MQTTClient.h"
 #include <uuid/uuid.h>
 #include <math.h>
+#include <signal.h>
 
-#define ADDRESS     "tcp://mqtt-broker:1883"
-#define TOPIC       "house/kitchen/temperature"
-#define PAYLOAD     "Hello World!"
+#define MQTT_BROKER_ADDRESS     "tcp://mqtt-broker:1883"
+#define TEMPERATURE_TOPIC       "house/kitchen/temperature"
 #define QOS         1
 #define TIMEOUT     10000L
 #define AUTHORIZATION_REQUEST_TOPIC "house/authorization"
-
-#define MQTT_
 
 char* generate_random_id()
 {
@@ -28,49 +26,6 @@ char* generate_random_id()
     return uuid_str;
 }
 
-int initialize_user_password()
-{
-}
-
-int init(char* client_id)
-{
-    MQTTClient client;
-    MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
-    MQTTClient_message pubmsg = MQTTClient_message_initializer;
-    MQTTClient_deliveryToken token;
-    int rc;
-
-    MQTTClient_create(&client, ADDRESS, client_id, MQTTCLIENT_PERSISTENCE_NONE, NULL);
-    conn_opts.keepAliveInterval = 20;
-    conn_opts.cleansession = 1;
-
-    if ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS)
-    {
-        printf("Failed to connect, return code %d\n", rc);
-        return -1;
-    }
-
-    pubmsg.payload = PAYLOAD;
-    pubmsg.payloadlen = strlen(PAYLOAD);
-    pubmsg.qos = QOS;
-    pubmsg.retained = 0;
-
-    char *init_topic = (char *)malloc(51 * sizeof(char));
-    sprintf(init_topic, "house/modules/%s", client_id);
-    MQTTClient_publishMessage(client, init_topic, &pubmsg, &token);
-
-    printf("Waiting for up to %d seconds for publication of %s\n"
-            "on topic %s for client with ClientID: %s\n",
-            (int)(TIMEOUT/1000), PAYLOAD, init_topic, client_id);
-    rc = MQTTClient_waitForCompletion(client, token, TIMEOUT);
-    printf("Message with delivery token %d delivered\n", token);
-
-    MQTTClient_disconnect(client, TIMEOUT);
-    MQTTClient_destroy(&client);
-    free(init_topic);
-    return rc;
-}
-
 int generate_init_temperature(const int min, const int max)
 {
     return max + rand() / (RAND_MAX / (min - max + 1) + 1);
@@ -81,61 +36,175 @@ int generate_next_temperature(const int current, const int min, const int max)
     return fmin(fmax(current + round(((float)rand()/(float)(RAND_MAX)) * 2.0 - 1), min), max);
 }
 
-int send_authorization_request(const char* client_id, MQTTClient client)
+int process_mqtt_message(void *context, char *topic_name, int topic_len, MQTTClient_message *message)
 {
-    MQTTClient_message authorization_request = MQTTClient_message_initializer;
-    authorization_request.payload = client_id;
-    authorization_request.payloadlen = strlen(client_id);
-    authorization_request.qos = 1;
-    authorization_request.retained = 0;
+    printf("Message from topic '%s' arrived.\n", topic_name);
+
+    MQTTClient_freeMessage(&message);
+    MQTTClient_free(topic_name);
+
+    return 1;
+}
+
+void connect_to_mqtt_broker(MQTTClient* mqtt_client)
+{
+    int rc;
+    MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
+    conn_opts.keepAliveInterval = 20;
+    conn_opts.cleansession = 1;
+    conn_opts.connectTimeout = 10;
+
+    do {
+        if ((rc = MQTTClient_connect(*mqtt_client, &conn_opts)) != MQTTCLIENT_SUCCESS)
+        {
+            printf("Failed to connect to MQTT broker '%s', return code %d.\n", MQTT_BROKER_ADDRESS, rc);
+            sleep(1);
+        }
+    }
+    while (rc != MQTTCLIENT_SUCCESS);
+
+    printf("Connected to '%s'.\n", MQTT_BROKER_ADDRESS);
+}
+
+void disconnect_from_mqtt_broker(MQTTClient* mqtt_client)
+{
+    int rc;
+
+    if ((rc = MQTTClient_disconnect(*mqtt_client, 10000)) != MQTTCLIENT_SUCCESS)
+        printf("Failed to disconnect MQTT client, return code %d.\n", rc);
+    else
+        printf("Disconnected from '%s'.\n", MQTT_BROKER_ADDRESS);
+}
+
+void subscribe_to_topic(MQTTClient* mqtt_client, char *topic)
+{
+    int rc;
+
+    if ((rc = MQTTClient_subscribe(*mqtt_client, topic, 0)) != MQTTCLIENT_SUCCESS)
+    {
+        printf("Failed to subscribe to topic '%s', return code %d.\n", topic, rc);
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Subscribed to topic '%s'.\n", topic);
+}
+
+void unsubscribe_from_topic(MQTTClient* mqtt_client, char *topic)
+{
+    int rc;
+
+    if ((rc = MQTTClient_unsubscribe(*mqtt_client, topic)) != MQTTCLIENT_SUCCESS)
+    {
+        printf("Failed to unsubscribe from topic '%s', return code %d.\n", topic, rc);
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Unsubscribed from topic '%s'.\n", topic);
+}
+
+void process_connection_lost(void *context, char *cause)
+{
+    printf("Connection to '%s' lost.\n", MQTT_BROKER_ADDRESS);
+    if (context != NULL)
+    {
+        MQTTClient* mqtt_client = (MQTTClient*)context;
+        connect_to_mqtt_broker(mqtt_client);
+        subscribe_to_topic(mqtt_client, AUTHORIZATION_REQUEST_TOPIC);
+    }
+}
+
+void init_mqtt_client(MQTTClient* mqtt_client, const char* client_id)
+{
+    int rc;
+
+    if ((rc = MQTTClient_create(mqtt_client, MQTT_BROKER_ADDRESS, client_id, MQTTCLIENT_PERSISTENCE_NONE, NULL)) != MQTTCLIENT_SUCCESS)
+    {
+        printf("Failed to create MQTT client, return code %d.\n", rc);
+        exit(EXIT_FAILURE);
+    }
+}
+
+volatile MQTTClient_deliveryToken deliveredtoken;
+void process_delivered(void *context, MQTTClient_deliveryToken dt)
+{
+    printf("Message with token value %d delivery confirmed\n", dt);
+    deliveredtoken = dt;
+}
+
+void set_mqtt_callbacks(MQTTClient* mqtt_client)
+{
+    int rc;
+
+    if ((rc = MQTTClient_setCallbacks(*mqtt_client, mqtt_client, process_connection_lost, process_mqtt_message, process_delivered)) != MQTTCLIENT_SUCCESS)
+    {
+        printf("Failed to set callbacks for MQTT client, return code %d.\n", rc);
+        exit(EXIT_FAILURE);
+    }
+}
+
+void publish_message(const MQTTClient* client, char* topic, void* payload, int payloadlen)
+{
+    int rc;
+    MQTTClient_message msg = MQTTClient_message_initializer;
+    msg.payload = payload;
+    msg.payloadlen = payloadlen;
+    msg.qos = 1;
+    msg.retained = 0;
 
     MQTTClient_deliveryToken token;
 
-    printf("Sending authorization request to topic '%s' for ClientID '%s'\n", AUTHORIZATION_REQUEST_TOPIC, client_id);
-    MQTTClient_publishMessage(client, AUTHORIZATION_REQUEST_TOPIC, &authorization_request, &token);
+    if ((rc = MQTTClient_publishMessage(*client, topic, &msg, &token)) != MQTTCLIENT_SUCCESS)
+    {
+        printf("Failed to publish message to topic '%s', return code %d.\n", topic, rc);
+        exit(EXIT_FAILURE);
+    }
 
-    int rc;
-    rc = MQTTClient_waitForCompletion(client, token, TIMEOUT);
-    printf("Message with delivery token %d delivered\n", token);
-
-    return rc;
+    printf("Published message to topic '%s'.\n", topic);
 }
 
-/*
-char* get_authorization_response(const char* client_id, MQTTClient client)
+volatile sig_atomic_t stop = 0;
+
+void term(int signum)
 {
-}*/
+    stop = 1;
+}
+
+void subscribe_to_signals()
+{
+    struct sigaction action;
+    memset(&action, 0, sizeof(struct sigaction));
+    action.sa_handler = term;
+    sigaction(SIGTERM, &action, NULL);
+    sigaction(SIGINT, &action, NULL);
+}
 
 int main(int argc, char* argv[])
 {
-    MQTTClient client;
-    MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
-    int rc;
+    subscribe_to_signals();
 
     char* client_id = generate_random_id();
 
-    MQTTClient_create(&client, ADDRESS, client_id, MQTTCLIENT_PERSISTENCE_NONE, NULL);
-    conn_opts.keepAliveInterval = 20;
-    conn_opts.cleansession = 0;
+    MQTTClient anonymous_mqtt_client;
+    init_mqtt_client(&anonymous_mqtt_client, client_id);
+    set_mqtt_callbacks(&anonymous_mqtt_client);
+    connect_to_mqtt_broker(&anonymous_mqtt_client);
 
-    if ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS)
-    {
-        printf("Failed to connect, return code %d\n", rc);
-        return -1;
-    }
+    char *password_topic = (char *)malloc((strlen("house/authorization/") + strlen(client_id) + 1) * sizeof(char));
+    sprintf(password_topic, "house/authorization/%s", client_id);
+    subscribe_to_topic(&anonymous_mqtt_client, password_topic);
 
-    if ((rc = send_authorization_request(client_id, client)) != MQTTCLIENT_SUCCESS)
-    {
-        printf("Failed to send authorization request, return code %d\n", rc);
-        return -1;
-    }
+    publish_message(&anonymous_mqtt_client, AUTHORIZATION_REQUEST_TOPIC, client_id, strlen(client_id) + 1);
 
-    MQTTClient_disconnect(client, TIMEOUT);
-    MQTTClient_destroy(&client);
+    sleep(100);
+
+    unsubscribe_from_topic(&anonymous_mqtt_client, password_topic);
+    free(password_topic);
+
+    disconnect_from_mqtt_broker(&anonymous_mqtt_client);
+    MQTTClient_destroy(&anonymous_mqtt_client);
     free(client_id);
 
     /*
-    //init(client_id);
     //const int min_temperature = 10;
     //const int max_temperature = 40;
     int temperature = generate_init_temperature(min_temperature, max_temperature);
@@ -149,40 +218,3 @@ int main(int argc, char* argv[])
     */
     return 0;
 }
-
-/*
-int main(int argc, char* argv[])
-{
-    MQTTClient client;
-    MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
-    MQTTClient_message pubmsg = MQTTClient_message_initializer;
-    MQTTClient_deliveryToken token;
-    int rc;
-
-    MQTTClient_create(&client, ADDRESS, CLIENTID,
-        MQTTCLIENT_PERSISTENCE_NONE, NULL);
-    conn_opts.keepAliveInterval = 20;
-    conn_opts.cleansession = 1;
-    conn_opts.username = "temperature_sensor";
-    conn_opts.password = "test";
-
-    if ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS)
-    {
-        printf("Failed to connect, return code %d\n", rc);
-        exit(-1);
-    }
-    pubmsg.payload = PAYLOAD;
-    pubmsg.payloadlen = strlen(PAYLOAD);
-    pubmsg.qos = QOS;
-    pubmsg.retained = 0;
-    MQTTClient_publishMessage(client, TOPIC, &pubmsg, &token);
-    printf("Waiting for up to %d seconds for publication of %s\n"
-            "on topic %s for client with ClientID: %s\n",
-            (int)(TIMEOUT/1000), PAYLOAD, TOPIC, CLIENTID);
-    rc = MQTTClient_waitForCompletion(client, token, TIMEOUT);
-    printf("Message with delivery token %d delivered\n", token);
-    MQTTClient_disconnect(client, 10000);
-    MQTTClient_destroy(&client);
-    return rc;
-}
-*/
