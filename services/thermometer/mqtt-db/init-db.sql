@@ -18,3 +18,15 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS users_username ON users (username);
+
+CREATE TABLE IF NOT EXISTS acls (
+  id INTEGER AUTO_INCREMENT,
+  username VARCHAR(25) NOT NULL,
+  topic VARCHAR(256) NOT NULL,
+  rw INT(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS acls_user_topic ON acls (username, topic(228));
+
+INSERT INTO acls (username, topic, rw) VALUES ('anonymous', 'house/authorization', 2);
