@@ -206,7 +206,7 @@ int main(int argc, char* argv[])
     do
     {
         publish_message(&anonymous_mqtt_client, AUTHORIZATION_REQUEST_TOPIC, client_id, strlen(client_id) + 1);
-        sleep(1);
+        sleep(5);
     }
     while(!stop && password == NULL);
 

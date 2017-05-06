@@ -38,6 +38,9 @@
 #include "hash.h"
 #include "backends.h"
 
+#define USER_QUERY	"SELECT pw FROM users WHERE username like '%s'"
+#define ACL_QUERY	"SELECT topic FROM acls WHERE (username = '%s') AND (rw >= %d)"
+
 struct mysql_backend {
         MYSQL *mysql;
 	char *host;
@@ -66,10 +69,9 @@ void *be_mysql_init()
 {
 	struct mysql_backend *conf;
 	char *host, *user, *pass, *dbname, *p;
-	char *userquery;
-    char *opt_flag;
+    	char *opt_flag;
 	int port;
-    my_bool reconnect = false;
+    	my_bool reconnect = false;
 
 	_log(LOG_DEBUG, "}}}} MYSQL");
 
@@ -82,13 +84,6 @@ void *be_mysql_init()
 	host = (host) ? host : strdup("localhost");
 	port = (!p) ? 3306 : atoi(p);
 
-	userquery = p_stab("userquery");
-
-	if (!userquery) {
-		_fatal("Mandatory option 'userquery' is missing");
-		return (NULL);
-	}
-
 	if ((conf = (struct mysql_backend *)malloc(sizeof(struct mysql_backend))) == NULL)
 		return (NULL);
 
@@ -97,11 +92,11 @@ void *be_mysql_init()
 	conf->port		= port;
 	conf->user		= user;
 	conf->pass		= pass;
-    conf->auto_connect  = false;
+    	conf->auto_connect  = false;
 	conf->dbname		= dbname;
-	conf->userquery		= userquery;
+	conf->userquery		= USER_QUERY;
 	conf->superquery	= p_stab("superquery");
-	conf->aclquery		= p_stab("aclquery");
+	conf->aclquery		= ACL_QUERY;
 
     opt_flag = get_bool("mysql_auto_connect", "true");
     if (!strcmp("true", opt_flag)) {
@@ -132,12 +127,8 @@ void be_mysql_destroy(void *handle)
 
 	if (conf) {
 		mysql_close(conf->mysql);
-		if (conf->userquery)
-			free(conf->userquery);
 		if (conf->superquery)
 			free(conf->superquery);
-		if (conf->aclquery)
-			free(conf->aclquery);
 		free(conf);
 	}
 }
@@ -174,7 +165,7 @@ char *be_mysql_getuser(void *handle, const char *username, const char *password,
 	MYSQL_RES *res = NULL;
 	MYSQL_ROW rowdata;
 
-	if (!conf || !conf->userquery || !username || !*username)
+	if (!conf || !username || !*username)
 		return (NULL);
 
     if (mysql_ping(conf->mysql)) {
@@ -219,7 +210,10 @@ char *be_mysql_getuser(void *handle, const char *username, const char *password,
 	v = rowdata[0];
 	value = (v) ? strdup(v) : NULL;
 
-        *authenticated = TRUE;
+        if (strcmp(v, password) == 0)
+	{
+            *authenticated = TRUE;
+	}
 
    out:
 

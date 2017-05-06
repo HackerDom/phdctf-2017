@@ -28,9 +28,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS acls_user_topic ON acls (username, topic(228))
 GRANT SELECT ON mqtt.users TO 'mqtt_broker'@'%' WITH GRANT OPTION;
 GRANT SELECT ON mqtt.acls TO 'mqtt_broker'@'%' WITH GRANT OPTION;
 
-GRANT INSERT,UPDATE ON mqtt.users TO 'thermometer_module'@'%' WITH GRANT OPTION;
+GRANT SELECT,INSERT,UPDATE ON mqtt.users TO 'thermometer_module'@'%' WITH GRANT OPTION;
 GRANT INSERT,UPDATE ON mqtt.acls TO 'thermometer_module'@'%' WITH GRANT OPTION;
 FLUSH PRIVILEGES;
 
 INSERT INTO acls (username, topic, rw) VALUES ('anonymous', 'house/authorization', 2);
 INSERT INTO acls (username, topic, rw) VALUES ('anonymous', 'house/authorization/%c', 1);
+INSERT INTO acls (username, topic, rw) VALUES ('temperature-module', 'house/authorization', 1);
+INSERT INTO acls (username, topic, rw) VALUES ('temperature-module', 'house/authorization/#', 2);

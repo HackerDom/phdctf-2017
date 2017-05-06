@@ -1,5 +1,5 @@
 FROM debian:latest
-RUN apt-get update && apt-get install -y build-essential gcc make libssl-dev libmicrohttpd-dev && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y build-essential gcc make libssl-dev libmicrohttpd-dev libmysqlclient-dev uuid-dev && rm -rf /var/lib/apt/lists/*
 
 COPY paho.mqtt.c /usr/src/paho.mqtt.c
 WORKDIR /usr/src/paho.mqtt.c

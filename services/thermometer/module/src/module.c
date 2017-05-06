@@ -8,6 +8,8 @@
 #include "MQTTClient.h"
 #include <sys/timeb.h>
 #include <signal.h>
+#include <mysql.h>
+#include <uuid/uuid.h>
 
 #define HTTP_SERVER_PORT            8888
 #define MQTT_BROKER_ADDRESS         "tcp://mqtt-broker:1883"
@@ -15,6 +17,11 @@
 #define QOS                         1
 #define AUTHORIZATION_REQUEST_TOPIC "house/authorization"
 #define TIMEOUT                     10000L
+#define MQTT_DB_HOST                "mqtt-db"
+#define MQTT_DB_PORT                3306
+#define MQTT_DB_DATABASE            "mqtt"
+#define MQTT_DB_USER                "thermometer_module"
+#define MQTT_DB_PASSWORD            "4VS6yKnPF9eLoZkB"
 
 int answer_to_connection (void *cls, struct MHD_Connection *connection,
                           const char *url,
@@ -64,6 +71,14 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
     return ret;
 }
 
+typedef struct MQTT_CONNECTION_INFO {
+  MQTTClient *mqtt_client;
+  char *username;
+  char *password;
+} MQTT_CONNECTION_INFO;
+
+
+
 void publish_message(const MQTTClient* client, char* topic, void* payload, int payloadlen)
 {
     int rc;
@@ -92,7 +107,7 @@ int process_mqtt_message(void *context, char *topic_name, int topic_len, MQTTCli
 
         if (context != NULL)
         {
-            MQTTClient* mqtt_client = (MQTTClient*)context;
+            MQTTClient* mqtt_client = ((MQTT_CONNECTION_INFO*)context)->mqtt_client;
 
             char *client_authorization_topic = (char *)malloc((strlen("house/authorization/") + strlen(message->payload) + 1) * sizeof(char));
             sprintf(client_authorization_topic, "house/authorization/%s", message->payload);
@@ -112,13 +127,15 @@ int process_mqtt_message(void *context, char *topic_name, int topic_len, MQTTCli
     return 1;
 }
 
-void connect_to_mqtt_broker(MQTTClient* mqtt_client)
+void connect_to_mqtt_broker(MQTTClient* mqtt_client, char *username, char *password)
 {
     int rc;
     MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
     conn_opts.keepAliveInterval = 20;
     conn_opts.cleansession = 0;
     conn_opts.connectTimeout = 10;
+    conn_opts.username = username;
+    conn_opts.password = password;
 
     do {
         if ((rc = MQTTClient_connect(*mqtt_client, &conn_opts)) != MQTTCLIENT_SUCCESS)
@@ -180,9 +197,9 @@ void process_connection_lost(void *context, char *cause)
     printf("Connection to '%s' lost.\n", MQTT_BROKER_ADDRESS);
     if (context != NULL)
     {
-        MQTTClient* mqtt_client = (MQTTClient*)context;
-        connect_to_mqtt_broker(mqtt_client);
-        subscribe_to_topic(mqtt_client, AUTHORIZATION_REQUEST_TOPIC);
+        MQTT_CONNECTION_INFO* connection_info = (MQTT_CONNECTION_INFO*)context;
+        connect_to_mqtt_broker(connection_info->mqtt_client, connection_info->username, connection_info->password);
+        subscribe_to_topic(connection_info->mqtt_client, AUTHORIZATION_REQUEST_TOPIC);
     }
 }
 
@@ -197,11 +214,11 @@ void init_mqtt_client(MQTTClient* mqtt_client)
     }
 }
 
-void set_mqtt_callbacks(MQTTClient* mqtt_client)
+void set_mqtt_callbacks(MQTTClient* mqtt_client, MQTT_CONNECTION_INFO *context)
 {
     int rc;
 
-    if ((rc = MQTTClient_setCallbacks(*mqtt_client, mqtt_client, process_connection_lost, process_mqtt_message, process_delivered)) != MQTTCLIENT_SUCCESS)
+    if ((rc = MQTTClient_setCallbacks(*mqtt_client, context, process_connection_lost, process_mqtt_message, process_delivered)) != MQTTCLIENT_SUCCESS)
     {
         printf("Failed to set callbacks for MQTT client, return code %d.\n", rc);
         exit(EXIT_FAILURE);
@@ -224,14 +241,81 @@ void subscribe_to_signals()
     sigaction(SIGINT, &action, NULL);
 }
 
+MYSQL* mqtt_db_init()
+{
+    MYSQL *mysql = mysql_init(NULL);
+    if (mysql == NULL) 
+    {
+        printf("Failed to init MySQL object: %s\n", mysql_error(mysql));
+        exit(EXIT_FAILURE);
+    }
+
+    return mysql;
+}
+
+void mqtt_db_connect(MYSQL* mysql)
+{
+    do
+    {
+        if (mysql_real_connect(mysql, MQTT_DB_HOST, MQTT_DB_USER, MQTT_DB_PASSWORD, MQTT_DB_DATABASE, 0, NULL, 0) == NULL) 
+        {
+            printf("Can't connect to MySQL db '%s:%d': %s\n", MQTT_DB_HOST, MQTT_DB_PORT, mysql_error(mysql));
+            sleep(1);
+        }
+        else
+            break;
+    } while(1);
+
+    printf("Connected to '%s:%d'.\n", MQTT_DB_HOST, MQTT_DB_PORT);
+}
+
+void add_mqtt_user(MYSQL *mysql, char *user, char *password)
+{
+    char *query = (char *)malloc((strlen("INSERT INTO users (username, pw) VALUES(\"\", \"\") ON DUPLICATE KEY UPDATE username=\"\", pw=\"\"") + strlen(user)*2 + strlen(password)*2 + 1) * sizeof(char));
+    sprintf(query, "INSERT INTO users (username, pw) VALUES(\"%s\", \"%s\") ON DUPLICATE KEY UPDATE username=\"%s\", pw=\"%s\"", user, password, user, password);
+    if (mysql_query(mysql, query)) 
+    {
+        printf("Failed to add MQTT user: %s\n", mysql_error(mysql));
+        free(query);
+        mysql_close(mysql);
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Added MQTT user %s.\n", user);
+
+    free(query);
+}
+
+char* generate_random_password()
+{
+    uuid_t uuid;
+    char *uuid_str;
+
+    uuid_generate(uuid);
+
+    uuid_str = malloc (sizeof (char) * 37);
+    uuid_unparse_lower(uuid, uuid_str);
+
+    return uuid_str;
+}
+
 int main()
 {
     subscribe_to_signals();
 
+    char *mqtt_password = generate_random_password();
+
+    MYSQL *mysql = mqtt_db_init();
+    mqtt_db_connect(mysql);
+    add_mqtt_user(mysql, MQTT_MODULE_CLIENT_ID, mqtt_password);
+
     MQTTClient mqtt_client;
     init_mqtt_client(&mqtt_client);
-    set_mqtt_callbacks(&mqtt_client);
-    connect_to_mqtt_broker(&mqtt_client);
+
+    MQTT_CONNECTION_INFO info = { .mqtt_client = &mqtt_client, .username = MQTT_MODULE_CLIENT_ID, .password = mqtt_password };
+
+    set_mqtt_callbacks(&mqtt_client, &info);
+    connect_to_mqtt_broker(&mqtt_client, MQTT_MODULE_CLIENT_ID, mqtt_password);
     subscribe_to_topic(&mqtt_client, AUTHORIZATION_REQUEST_TOPIC);
 
     struct MHD_Daemon *daemon;
@@ -250,6 +334,9 @@ stop:
     unsubscribe_from_topic(&mqtt_client, AUTHORIZATION_REQUEST_TOPIC);
     disconnect_from_mqtt_broker(&mqtt_client);
     MQTTClient_destroy(&mqtt_client);
+
+    mysql_close(mysql);
+    free(mqtt_password);
 
     return 0;
 }
