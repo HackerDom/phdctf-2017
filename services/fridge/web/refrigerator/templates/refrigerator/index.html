@@ -59,7 +59,7 @@
                                     {{ recipe.title|truncatechars:20 }}
                                 </h4>
                                 <p class="card-text">
-                                    {{ recipe.description }}
+                                    {{ recipe.description|linebreaksbr|truncatewords_html:5 }}
                                 </p>
                                 <a href="{{ recipe.get_absolute_url }}" class="btn btn-primary">View recipe</a>
                             </div>

@@ -5,6 +5,7 @@ import loader
 import os.path
 from django.contrib.auth import hashers
 import json
+import logging
 
 
 PORT = 9595
@@ -87,15 +88,18 @@ async def process_list_command(writer, user):
             'description': refrigerator.description,
         }) + '\n').encode())
 
+    if len(owned_refrigerators) == 0:
+        writer.write(b'No refrigerators found\n')
+
     await writer.drain()
 
 
-def is_recipe_available(recipe, food_items):
+def check_recipe_for_foods_in_refrigerator(recipe, food_items):
     recipe_items = models.filter_by_field(
         models.recipe_items, recipe_id=recipe.id
     )
     if len(recipe_items) == 0:
-        return False
+        return None
 
     is_fit = False
     my_food_needs_to_buy = []
@@ -110,7 +114,7 @@ def is_recipe_available(recipe, food_items):
 
     if is_fit:
         return my_food_needs_to_buy
-    return False
+    return None
 
 
 async def process_recipes_command(writer, user, refrigerator_id):
@@ -124,9 +128,11 @@ async def process_recipes_command(writer, user, refrigerator_id):
         models.food_items, refrigerator_id=refrigerator.id
     )
 
+    found = False
     for recipe in models.recipes.values():
-        food_needs_to_buy = is_recipe_available(recipe, food_items)
-        if food_needs_to_buy:
+        food_needs_to_buy = check_recipe_for_foods_in_refrigerator(recipe, food_items)
+        if food_needs_to_buy is not None:
+            found = True
             writer.write((json.dumps({
                 'id': recipe.id,
                 'title': recipe.title,
@@ -138,10 +144,16 @@ async def process_recipes_command(writer, user, refrigerator_id):
                     } for f in food_needs_to_buy]
             }) + '\n').encode())
 
+    if not found:
+        writer.write(b'No recipes found\n')
+
     await writer.drain()
 
 async def process_command(reader, writer):
-    command = (await read_line(reader)).split()
+    command_line = await read_line(reader)
+    logging.info('Received "%s" from %s', command_line, writer.get_extra_info('peername'))
+
+    command = command_line.split()
     if command[0] == 'EXIT':
         return True
 
@@ -190,6 +202,8 @@ async def update_models_loop():
 
 
 if __name__ == '__main__':
+    logging.basicConfig(format='%(asctime)-15s [%(levelname)s] %(message)s', level=logging.DEBUG)
+
     loop = asyncio.get_event_loop()
     server_coroutine = asyncio.start_server(handle_client, '0.0.0.0', PORT, loop=loop)
     update_models_coroutine = update_models_loop()
@@ -197,7 +211,7 @@ if __name__ == '__main__':
     server = loop.run_until_complete(server_coroutine)
 
     # Serve requests until Ctrl+C is pressed
-    print('Serving on {}'.format(server.sockets[0].getsockname()))
+    logging.info('Serving on {}'.format(server.sockets[0].getsockname()))
     try:
         loop.run_forever()
     except KeyboardInterrupt:
