@@ -1,0 +1,49 @@
+{% extends 'layout.html' %}
+
+{% load dict %}
+{% load bootstrap %}
+
+{% block content %}
+    <div class="main-block">
+        <div class="container">
+            <h2 title="{{ refrigerator.title }}">
+                {{ refrigerator.title|truncatechars:40 }}
+            </h2>
+            <p class="text-muted">
+                {{ refrigerator.description|linebreaksbr }}
+            </p>
+
+            {% for food_item in refrigerator.items.all %}
+                <div>
+                    {{ forloop.counter }}. {{ food_item.food_type }} ({{ food_item.count }} {{ Unit.values|get_item:food_item.food_type.unit|lower }})
+                </div>
+            {% endfor %}
+
+            <br/>
+
+            <button class="btn btn-primary" data-toggle="modal" data-target="#add-food-to-refrigerator-modal">Add food</button>
+        </div>
+    </div>
+
+    <div class="modal fade" id="add-food-to-refrigerator-modal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add food to {{ refrigerator.title }}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form method="POST" action="{% url 'add_food_to_refrigerator' refrigerator.id %}">
+                    <div class="modal-body">
+                        {% csrf_token %}
+                        {{ add_food_to_refrigerator_form|bootstrap }}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">Add food</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}

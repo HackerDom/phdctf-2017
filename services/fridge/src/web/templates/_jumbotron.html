@@ -1,0 +1,26 @@
+<section class="jumbotron text-center">
+    <div class="container">
+        <h1 class="jumbotron-heading">Fridge</h1>
+        <p class="lead text-muted">
+            Sign in and create unlimited refrigerators, add information about your food and favourite recipes.
+            You can also connect your IoT kitchen&nbsp;gadgets to our API.
+        </p>
+        <p>
+            {% if user.is_authenticated %}
+                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#add-refrigerator-modal">
+                    Register you own refrigerator
+                </button>
+                <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#add-food-type-modal">
+                    Add food type
+                </button>
+            {% else %}
+                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#login-modal">
+                    Login and register you own refrigerator
+                </button>
+                <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#registration-modal">
+                    Create account
+                </button>
+            {% endif %}
+        </p>
+    </div>
+</section>

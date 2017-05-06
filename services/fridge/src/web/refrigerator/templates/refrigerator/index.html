@@ -1,0 +1,156 @@
+{% extends 'layout.html' %}
+
+{% load bootstrap %}
+
+{% block content %}
+    {% include '_jumbotron.html' %}
+
+    <div class="main-block">
+        <div class="container">
+            <div class="row">
+                {% for refrigerator in refrigerators %}
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <div class="card">
+                            <img src="//placehold.it/500x280" alt="{{ refrigerator.title }}" class="card-img-top"/>
+                            <div class="card-block">
+                                <h4 class="card-title" title="{{ refrigerator.title }}">
+                                    {{ refrigerator.title|truncatechars:20 }}
+                                </h4>
+                                <p class="card-text">
+                                    {{ refrigerator.description|linebreaksbr|truncatewords_html:5 }}
+                                </p>
+                                <a href="{{ refrigerator.get_absolute_url }}" class="btn btn-primary">View food</a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+
+                {% if refrigerators %}
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <div class="card text-center">
+                            <div class="card-block">
+                                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#add-refrigerator-modal">
+                                    Add new one
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <br />
+
+            <h2>Your recipes</h2>
+            <p class="text-muted" style="max-width: 800px">
+                Trust your favorite recipes to us.
+                Save them in our cloud storage and make cooking easier.
+                Moreover your recipes are available for your kitchen IoT gadgets via our API.
+            </p>
+
+            <div class="row">
+                {% for recipe in recipes %}
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <div class="card">
+                            <img src="//placehold.it/500x280" alt="{{ recipe.title }}" class="card-img-top"/>
+                            <div class="card-block">
+                                <h4 class="card-title" title="{{ recipe.title }}">
+                                    {{ recipe.title|truncatechars:20 }}
+                                </h4>
+                                <p class="card-text">
+                                    {{ recipe.description }}
+                                </p>
+                                <a href="{{ recipe.get_absolute_url }}" class="btn btn-primary">View recipe</a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card text-center">
+                        <div class="card-block">
+                            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#add-recipe-modal">
+                                Add new recipe
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="add-refrigerator-modal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create new refrigerator</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form method="POST" action="{% url 'add_refrigerator' %}">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                        {{ add_refrigerator_form|bootstrap }}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">Create</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="add-recipe-modal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create new recipe</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form method="POST" action="{% url 'add_recipe' %}">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                        {{ add_recipe_form|bootstrap }}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">Create</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="add-food-type-modal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add food type</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form method="POST" action="{% url 'add_food' %}">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                        {{ add_food_type_form|bootstrap }}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    {% if add_recipe_form.errors %}
+        $('#add-recipe-modal').modal('show');
+    {% elif add_refrigerator_form.errors %}
+        $('#add-refrigerator-modal').modal('show');
+    {% elif add_food_type_form.errors %}
+        $('#add-food-type-modal').modal('show');
+    {% endif %}
+{% endblock %}

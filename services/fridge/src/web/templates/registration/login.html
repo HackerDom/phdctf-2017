@@ -1,0 +1,59 @@
+{% extends 'layout.html' %}
+
+{% load bootstrap %}
+
+{% block content %}
+    {% include '_jumbotron.html' %}
+
+    <div class="modal fade" id="login-modal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Login</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form method="POST" action="{% url 'login' %}">
+                    <div class="modal-body">
+                        {% csrf_token %}
+                        {{ form|bootstrap }}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">Login</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="registration-modal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create account</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form method="POST" action="{% url 'registration' %}">
+                    <div class="modal-body">
+                        {% csrf_token %}
+                        {{ registration_form|bootstrap }}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">Create account</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}    
+    {% if registration_form.errors %}
+        $('#registration-modal').modal('show');
+    {% elif form.errors %}
+        $('#login-modal').modal('show');
+    {% endif %}
+{% endblock %}
