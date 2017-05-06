@@ -80,34 +80,6 @@ int process_mqtt_message(void *context, char *topic_name, int topic_len, MQTTCli
     return 1;
 }
 
-void connlost(void *context, char *cause)
-{
-    printf("\nConnection lost\n");
-    printf("     cause: %s\n", cause);
-}
-
-void init_mqtt_client(MQTTClient* mqtt_client)
-{
-    int rc;
-
-    if ((rc = MQTTClient_create(mqtt_client, MQTT_BROKER_ADDRESS, MQTT_MODULE_CLIENT_ID, MQTTCLIENT_PERSISTENCE_NONE, NULL)) != MQTTCLIENT_SUCCESS)
-    {
-        printf("Failed to create MQTT client, return code %d.\n", rc);
-        exit(EXIT_FAILURE);
-    }
-}
-
-void set_mqtt_callbacks(MQTTClient* mqtt_client)
-{
-    int rc;
-
-    if ((rc = MQTTClient_setCallbacks(*mqtt_client, NULL, NULL, process_mqtt_message, NULL)) != MQTTCLIENT_SUCCESS)
-    {
-        printf("Failed to set callbacks for MQTT client, return code %d.\n", rc);
-        exit(EXIT_FAILURE);
-    }
-}
-
 void connect_to_mqtt_broker(MQTTClient* mqtt_client)
 {
     int rc;
@@ -115,12 +87,16 @@ void connect_to_mqtt_broker(MQTTClient* mqtt_client)
     conn_opts.keepAliveInterval = 20;
     conn_opts.cleansession = 0;
     conn_opts.connectTimeout = 10;
+    conn_opts.retryInterval = 1;
 
-    if ((rc = MQTTClient_connect(*mqtt_client, &conn_opts)) != MQTTCLIENT_SUCCESS)
-    {
-        printf("Failed to connect to MQTT broker '%s', return code %d.\n", MQTT_BROKER_ADDRESS, rc);
-        exit(EXIT_FAILURE);
+    do {
+        if ((rc = MQTTClient_connect(*mqtt_client, &conn_opts)) != MQTTCLIENT_SUCCESS)
+        {
+            printf("Failed to connect to MQTT broker '%s', return code %d.\n", MQTT_BROKER_ADDRESS, rc);
+            sleep(1);
+        }
     }
+    while (rc != MQTTCLIENT_SUCCESS);
 
     printf("Connected to '%s'\n", MQTT_BROKER_ADDRESS);
 }
@@ -159,6 +135,39 @@ void unsubscribe_from_topic(MQTTClient* mqtt_client, char *topic)
     }
 
     printf("Unsubscribed from topic '%s'.\n", topic);
+}
+
+void process_connection_lost(void *context, char *cause)
+{
+    printf("Connection to '%s' lost.\n", MQTT_BROKER_ADDRESS);
+    if (context != NULL)
+    {
+        MQTTClient* mqtt_client = (MQTTClient*)context;
+        connect_to_mqtt_broker(mqtt_client);
+        subscribe_to_topic(mqtt_client, AUTHORIZATION_REQUEST_TOPIC);
+    }
+}
+
+void init_mqtt_client(MQTTClient* mqtt_client)
+{
+    int rc;
+
+    if ((rc = MQTTClient_create(mqtt_client, MQTT_BROKER_ADDRESS, MQTT_MODULE_CLIENT_ID, MQTTCLIENT_PERSISTENCE_NONE, NULL)) != MQTTCLIENT_SUCCESS)
+    {
+        printf("Failed to create MQTT client, return code %d.\n", rc);
+        exit(EXIT_FAILURE);
+    }
+}
+
+void set_mqtt_callbacks(MQTTClient* mqtt_client)
+{
+    int rc;
+
+    if ((rc = MQTTClient_setCallbacks(*mqtt_client, mqtt_client, process_connection_lost, process_mqtt_message, NULL)) != MQTTCLIENT_SUCCESS)
+    {
+        printf("Failed to set callbacks for MQTT client, return code %d.\n", rc);
+        exit(EXIT_FAILURE);
+    }
 }
 
 volatile sig_atomic_t stop = 0;
