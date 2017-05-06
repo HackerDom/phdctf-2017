@@ -4,6 +4,8 @@ import asyncio
 import collections
 import json
 import logging
+
+import functools
 from bs4 import BeautifulSoup
 import string
 import time
@@ -87,6 +89,16 @@ class FridgeApi:
     def __init__(self, host):
         self.host = host
 
+    async def _read_line(self, reader):
+        buffer = b''
+        char = b''
+        while char != b'\n':
+            buffer += char
+            char = await reader.read(1)
+            if len(char) == 0:
+                break
+        return buffer.decode()
+
     async def _tcp_request(self, message, loop):
         logging.info('[API] Create connection to %s:%d', self.host, self.port)
         reader, writer = await asyncio.open_connection(self.host, self.port, loop=loop)
@@ -95,13 +107,20 @@ class FridgeApi:
         writer.write(message.encode())
         await writer.drain()
 
-        answer = await reader.read(1000)
-        logging.info('[API] Received: %r...', answer.decode()[:100])
+        count_json = await self._read_line(reader)
+        logging.info('[API] Received count info: %r...', count_json)
+        count = json.loads(count_json)['count']
+
+        answer = []
+        for _ in range(count):
+            message = await self._read_line(reader)
+            logging.info('[API] Received: %r...', message)
+            answer.append(message)
 
         logging.info('[API] Close the socket')
         writer.close()
 
-        return answer
+        return '\n'.join(answer)
 
     def query(self, command, *params):
         message = '%s %s\n' % (command, ' '.join(map(str, params)))
@@ -110,8 +129,24 @@ class FridgeApi:
         return answer
 
 
+def add_csrf_token(function, cookies):
+    """ Function for adding django-specific csrfmiddlewaretoken field in each POST request"""
+    @functools.wraps(function)
+    def new_function(*args, **kwargs):
+        data = kwargs.get('data', {})
+        data['csrfmiddlewaretoken'] = cookies.get('csrftoken')
+        kwargs['data'] = data
+        return function(*args, **kwargs)
+
+    return new_function
+
+
 class FridgeChecker(checklib.http.HttpChecker):
     port = 8000
+
+    def __init__(self):
+        super().__init__()
+        self._session.post = add_csrf_token(self._session.post, self._session.cookies)
 
     def info(self):
         print('vulns: 2:8')
@@ -274,6 +309,9 @@ class FridgeChecker(checklib.http.HttpChecker):
 
     @checklib.http.build_main_url
     def put(self, address, flag_id, flag, vuln):
+        # Get CSRF token
+        self.try_http_get(self.main_url)
+
         user = self.try_signup()
         food_type = self.try_create_food_type()
         refrigerator = self.try_create_refrigerator(
@@ -313,6 +351,9 @@ class FridgeChecker(checklib.http.HttpChecker):
         logging.info('Extracted refrigerator from flag_id: %s', refrigerator)
         logging.info('Extracted recipe from flag_id: %s', recipe)
 
+        # Get CSRF token
+        self.try_http_get(self.main_url)
+
         if vuln == 1:
             self.try_signin(user)
             r = self.try_http_get(self.main_url)
@@ -322,15 +363,12 @@ class FridgeChecker(checklib.http.HttpChecker):
             time.sleep(5)
             logging.info('Send any request to the web server')
             self.try_http_get(self.main_url)
+            logging.info('Sleep 1 second after sending request to the web server and before API request')
+            time.sleep(1)
 
             api = FridgeApi(address)
             api.query('LIST', user.username, user.password)
             api_answer = api.query('RECIPES', user.username, user.password, refrigerator.id)
-            try:
-                api_answer = api_answer.decode()
-            except:
-                logging.error('Can\'t decode answer from API: %s', api_answer)
-                self.exit(checklib.StatusCode.MUMBLE, 'Can\'t recognize answer from API')
 
             found = flag in api_answer
         else:

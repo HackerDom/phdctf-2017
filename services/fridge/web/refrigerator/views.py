@@ -136,7 +136,16 @@ def add_recipe_item(request, recipe_id):
     if form.is_valid():
         recipe_item = form.save(commit=False)
         recipe_item.recipe = recipe
-        recipe_item.save()
+
+        with transaction.atomic():
+            old_items = recipe.items.filter(food_type=recipe_item.food_type)
+            old_count = old_items.aggregate(count=Sum('count'))['count']
+            old_items.delete()
+
+            if old_count is not None:
+                recipe_item.count += old_count
+            recipe_item.save()
+
         return redirect(recipe)
 
     return view_recipe(request, recipe_id, add_recipe_item_form=form)

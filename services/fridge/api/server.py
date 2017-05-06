@@ -58,7 +58,7 @@ async def read_line(reader):
         buffer += char
         char = await reader.read(1)
         if len(char) == 0:
-            return buffer.decode()
+            break
     return buffer.decode()
 
 
@@ -81,15 +81,16 @@ async def process_list_command(writer, user):
         r for r in models.refrigerators.values() if r.owner_id == user.id
     ]
 
+    writer.write((json.dumps({
+        'count': len(owned_refrigerators)
+    }) + '\n').encode())
+
     for refrigerator in owned_refrigerators:
         writer.write((json.dumps({
             'id': refrigerator.id,
             'title': refrigerator.title,
             'description': refrigerator.description,
         }) + '\n').encode())
-
-    if len(owned_refrigerators) == 0:
-        writer.write(b'No refrigerators found\n')
 
     await writer.drain()
 
@@ -128,12 +129,12 @@ async def process_recipes_command(writer, user, refrigerator_id):
         models.food_items, refrigerator_id=refrigerator.id
     )
 
-    found = False
+    answer = []
+
     for recipe in models.recipes.values():
         food_needs_to_buy = check_recipe_for_foods_in_refrigerator(recipe, food_items)
         if food_needs_to_buy is not None:
-            found = True
-            writer.write((json.dumps({
+            answer.append({
                 'id': recipe.id,
                 'title': recipe.title,
                 'description': recipe.description,
@@ -142,16 +143,27 @@ async def process_recipes_command(writer, user, refrigerator_id):
                         'food_type': models.food_types[f.food_type_id].name,
                         'count': f.count
                     } for f in food_needs_to_buy]
-            }) + '\n').encode())
+            })
 
-    if not found:
-        writer.write(b'No recipes found\n')
+    writer.write((json.dumps({
+        'count': len(answer)
+    }) + '\n').encode())
+
+    for obj in answer:
+        writer.write((json.dumps(obj) + '\n').encode())
 
     await writer.drain()
 
 async def process_command(reader, writer):
     command_line = await read_line(reader)
-    logging.info('Received "%s" from %s', command_line, writer.get_extra_info('peername'))
+    if command_line == '':
+        return True
+
+    logging.info(
+        'Received "%s" from %s',
+        command_line,
+        writer.get_extra_info('peername')
+    )
 
     command = command_line.split()
     if command[0] == 'EXIT':
