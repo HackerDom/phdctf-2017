@@ -38,7 +38,7 @@
 #include "hash.h"
 #include "backends.h"
 
-#define USER_QUERY	"SELECT pw FROM users WHERE username like '%s'"
+#define USER_QUERY	"SELECT pw FROM users WHERE username = '%s'"
 #define ACL_QUERY	"SELECT topic FROM acls WHERE (username = '%s') AND (rw >= %d)"
 
 struct mysql_backend {

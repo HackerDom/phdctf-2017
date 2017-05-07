@@ -7,11 +7,11 @@
 #include <signal.h>
 
 #define MQTT_BROKER_ADDRESS     "tcp://mqtt-broker:1883"
-#define TEMPERATURE_TOPIC       "house/kitchen/temperature"
 #define QOS         1
 #define TIMEOUT     10000L
 #define AUTHORIZATION_REQUEST_TOPIC "house/authorization"
 #define AUTHORIZATION_RESPONSE_TOPIC_PREFIX "house/authorization/"
+#define TEMPERATURE_TOPIC "house/temperature"
 
 char* generate_random_id()
 {
@@ -68,13 +68,17 @@ int process_mqtt_message(void *context, char *topic_name, int topic_len, MQTTCli
     return 1;
 }
 
-void connect_to_mqtt_broker(MQTTClient* mqtt_client)
+void connect_to_mqtt_broker(MQTTClient* mqtt_client, char *username, char *password)
 {
     int rc;
     MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
     conn_opts.keepAliveInterval = 20;
     conn_opts.cleansession = 1;
     conn_opts.connectTimeout = 10;
+    if (username != NULL)
+        conn_opts.username = username;
+    if (password != NULL)
+        conn_opts.password = password;
 
     do {
         if ((rc = MQTTClient_connect(*mqtt_client, &conn_opts)) != MQTTCLIENT_SUCCESS)
@@ -117,7 +121,7 @@ void process_connection_lost(void *context, char *cause)
     if (context != NULL)
     {
         MQTTClient* mqtt_client = (MQTTClient*)context;
-        connect_to_mqtt_broker(mqtt_client);
+        connect_to_mqtt_broker(mqtt_client, NULL, NULL);
         subscribe_to_topic(mqtt_client, AUTHORIZATION_REQUEST_TOPIC);
     }
 }
@@ -197,7 +201,7 @@ int main(int argc, char* argv[])
     init_mqtt_client(&anonymous_mqtt_client, client_id);
 
     set_mqtt_callbacks(&anonymous_mqtt_client);
-    connect_to_mqtt_broker(&anonymous_mqtt_client);
+    connect_to_mqtt_broker(&anonymous_mqtt_client, NULL, NULL);
 
     char *password_topic = (char *)malloc((strlen(AUTHORIZATION_RESPONSE_TOPIC_PREFIX) + strlen(client_id) + 1) * sizeof(char));
     sprintf(password_topic, "%s%s", AUTHORIZATION_RESPONSE_TOPIC_PREFIX, client_id);
@@ -206,33 +210,43 @@ int main(int argc, char* argv[])
     do
     {
         publish_message(&anonymous_mqtt_client, AUTHORIZATION_REQUEST_TOPIC, client_id, strlen(client_id) + 1);
-        sleep(5);
+        sleep(20);
     }
     while(!stop && password == NULL);
 
-    if (password != NULL)
-    {
-        unsubscribe_from_topic(&anonymous_mqtt_client, password_topic);
-        free((void *)password);
-    }
-
+    unsubscribe_from_topic(&anonymous_mqtt_client, password_topic);
     free(password_topic);
 
     disconnect_from_mqtt_broker(&anonymous_mqtt_client);
     MQTTClient_destroy(&anonymous_mqtt_client);
+
+    if (password != NULL)
+    {
+        MQTTClient authenticated_mqtt_client;
+        init_mqtt_client(&authenticated_mqtt_client, client_id);
+        connect_to_mqtt_broker(&authenticated_mqtt_client, client_id, password);
+
+        const int min_temperature = 10;
+        const int max_temperature = 40;
+        int temperature = generate_init_temperature(min_temperature, max_temperature);
+
+        char temperature_str[3];
+
+        do
+        {
+            temperature = generate_next_temperature(temperature, min_temperature, max_temperature);
+            sprintf(&temperature_str, "%d", temperature);
+
+            publish_message(&anonymous_mqtt_client, TEMPERATURE_TOPIC, temperature_str, strlen(temperature_str) + 1);
+            printf("Published temperature: %d\n", temperature);
+            sleep(60);
+        }
+        while(!stop);
+
+        free((void *)password);
+    }
+
     free(client_id);
 
-    /*
-    //const int min_temperature = 10;
-    //const int max_temperature = 40;
-    int temperature = generate_init_temperature(min_temperature, max_temperature);
-    printf("Temperature: %d\n", temperature);
-
-    int i;
-    for (i = 0; i < 100; i++) {
-        temperature = generate_next_temperature(temperature, min_temperature, max_temperature);
-        printf("Next temperature: %d\n", temperature);
-    }
-    */
     return 0;
 }

@@ -22,6 +22,10 @@
 #define MQTT_DB_DATABASE            "mqtt"
 #define MQTT_DB_USER                "thermometer_module"
 #define MQTT_DB_PASSWORD            "4VS6yKnPF9eLoZkB"
+#define SENSOR_LIST_SIZE            100
+
+char *sensor_list[SENSOR_LIST_SIZE] = {0};
+int current_sensor_list_element = 0;
 
 int answer_to_connection (void *cls, struct MHD_Connection *connection,
                           const char *url,
@@ -62,8 +66,31 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
     }
     else
     {
-        const char *page = "<html><body>A secret.</body></html>";
-        response = MHD_create_response_from_buffer (strlen (page), (void*) page, MHD_RESPMEM_PERSISTENT);
+        if (strcmp(url, "/sensors") == 0)
+        {
+            char page[1024 + SENSOR_LIST_SIZE*100];
+            strcpy(page, "<html><body><form><table><tr><td>Sensor ID:</td><td><select name='sensor'>");
+            int i;
+            for (i = 0; i < SENSOR_LIST_SIZE; i++)
+            {
+                if (sensor_list[i] != NULL)
+                {
+                    strcat(page, "<option value='");
+                    strcat(page, sensor_list[i]);
+                    strcat(page, "'>");
+                    strcat(page, sensor_list[i]);
+                    strcat(page, "</option>");
+                }
+            }
+            strcat(page, "</select></td></tr><tr><td>Auth token:</td><td><input type='text' name='token'/></td></tr><td colspan='2'><input type='submit' name='submit'/></td></tr></table></form></body></html>");
+            response = MHD_create_response_from_buffer (strlen (page), (void*) page, MHD_RESPMEM_PERSISTENT);
+        }
+        else
+        {
+            const char *page = "<html><body><ul><li><a href=\"/sensors\">Authorize temperature sensor</a></li><li><a href=\"/clients\">Authorize client</a></li><li><a href=\"/api/generate\">Generate API key</a></li></ul></body></html>";
+            response = MHD_create_response_from_buffer (strlen (page), (void*) page, MHD_RESPMEM_PERSISTENT);
+        }
+
         ret = MHD_queue_response (connection, MHD_HTTP_OK, response);
     }
 
@@ -109,6 +136,25 @@ int process_mqtt_message(void *context, char *topic_name, int topic_len, MQTTCli
         {
             MQTTClient* mqtt_client = ((MQTT_CONNECTION_INFO*)context)->mqtt_client;
 
+            int i;
+            for (i = 0; i < SENSOR_LIST_SIZE; i++)
+            {
+                if (sensor_list[i] != NULL && strcmp(sensor_list[i], message->payload) == 0)
+                {
+                    printf("Authorization request for client_id '%s' already exists.\n");
+                    goto end_processing;
+                }
+            }
+
+            if (sensor_list[current_sensor_list_element] != NULL)
+                free(sensor_list[current_sensor_list_element]);
+            sensor_list[current_sensor_list_element] = strdup(message->payload);
+
+            if (current_sensor_list_element + 1 < SENSOR_LIST_SIZE)
+                current_sensor_list_element++;
+            else
+                current_sensor_list_element = 0;
+
             char *client_authorization_topic = (char *)malloc((strlen("house/authorization/") + strlen(message->payload) + 1) * sizeof(char));
             sprintf(client_authorization_topic, "house/authorization/%s", message->payload);
             char* password = "Pass";
@@ -121,6 +167,7 @@ int process_mqtt_message(void *context, char *topic_name, int topic_len, MQTTCli
         printf("Message from topic '%s' arrived.\n", topic_name);
     }
 
+end_processing:
     MQTTClient_freeMessage(&message);
     MQTTClient_free(topic_name);
 
