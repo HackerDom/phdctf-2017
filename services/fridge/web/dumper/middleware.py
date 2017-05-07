@@ -49,8 +49,11 @@ class DumperMiddleware:
                             shutil.move(tmp_filename, filename)
                             break
                         except:
+                            if i == 4:
+                                raise
                             time.sleep(0.1)
-                except:
+                except Exception as e:
+                    print(e)
                     # Don't throw exception to the user, just wait next request
                     cache.set('last_dump_time', last_dump_time)
 

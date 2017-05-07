@@ -1,0 +1,42 @@
+version: "3"
+
+services:
+    fridge-db:
+        image: postgres
+        volumes:
+            - ./volumes/db:/var/lib/postgresql/data
+        env_file:
+            - ./config/environment.env
+    
+    fridge-django:
+        build:
+            context: .
+            dockerfile: ./config/django.Dockerfile
+        depends_on:
+            - fridge-db
+        volumes:
+            - ./volumes/dumps:/dumps
+            - ./volumes/static:/static
+        env_file:
+            - ./config/environment.env
+        expose:
+            - "8000"
+    
+    fridge-nginx:
+        image: nginx
+        volumes:
+            - ./config/nginx.conf:/etc/nginx/nginx.conf
+            - ./volumes/static:/static:ro
+        depends_on:
+            - fridge-django
+        ports:
+            - "80:80"
+         
+    fridge-api:
+        build:
+            context: .
+            dockerfile: ./config/api.Dockerfile
+        volumes:
+            - ./volumes/dumps:/dumps:ro
+        ports:
+            - "9595:9595"

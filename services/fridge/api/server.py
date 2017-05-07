@@ -9,13 +9,16 @@ import logging
 
 
 PORT = 9595
-DUMPS_DIRECTORY = '../dumps'
+DUMPS_DIRECTORY = os.path.join(os.path.dirname(__file__), '..', 'dumps')
 
 
 class Models:
     def __init__(self):
         self.loader = loader.ModelLoader()
-        self.update()
+        try:
+            self.update()
+        except:
+            pass
 
     def update(self):
         self.users = self.loader.load_models_from_file(
