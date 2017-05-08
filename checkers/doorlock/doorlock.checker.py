@@ -1,0 +1,1 @@
+../../services/doorlock/scripts/doorlock.checker.py
