@@ -26,11 +26,16 @@
 #define GET                         0
 #define POST                        1
 #define POSTBUFFERSIZE              2048
+#define MQTT_ACL_READ               1
+#define MQTT_ACL_WRITE              2
 
 char *sensor_list[SENSOR_LIST_SIZE] = {0};
 int current_sensor_list_element = 0;
 
 MQTTClient mqtt_client;
+char *mqtt_username = MQTT_MODULE_CLIENT_ID;
+char *mqtt_password;
+
 MYSQL *mysql_client;
 
 int send_auth_fail_response(struct MHD_Connection *connection)
@@ -172,7 +177,7 @@ void request_completed(void* cls, struct MHD_Connection* connection,
     *con_cls = NULL;
 }
 
-void publish_message(MQTTClient* client, char* topic, void* payload, int payloadlen)
+void publish_message(char* topic, void* payload, int payloadlen)
 {
     int rc;
     MQTTClient_message msg = MQTTClient_message_initializer;
@@ -183,7 +188,7 @@ void publish_message(MQTTClient* client, char* topic, void* payload, int payload
 
     MQTTClient_deliveryToken token;
 
-    if ((rc = MQTTClient_publishMessage(*client, topic, &msg, &token)) != MQTTCLIENT_SUCCESS)
+    if ((rc = MQTTClient_publishMessage(mqtt_client, topic, &msg, &token)) != MQTTCLIENT_SUCCESS)
     {
         printf("Failed to publish message to topic '%s', return code %d.\n", topic, rc);
         exit(EXIT_FAILURE);
@@ -213,6 +218,20 @@ void add_mqtt_user(MYSQL *mysql, char *user, char *password, int update_existing
 
     free(query);
 }
+
+void add_mqtt_acl(MYSQL *mysql, char *user, char *topic, int permissions)
+{
+    char *query = query = (char *)malloc((strlen("INSERT INTO acls (username, topic, rw) VALUES(\"\", \"\", )") + strlen(user) + strlen(topic) + 1 + 1) * sizeof(char));
+    sprintf(query, "INSERT INTO acls (username, topic, rw) VALUES(\"%s\", \"%s\", %d)", user, topic, permissions);
+
+    if (mysql_query(mysql, query)) 
+        printf("Failed to add MQTT acl: %s\n", mysql_error(mysql));
+    else
+        printf("Added acl rule for user %s.\n", user);
+
+    free(query);
+}
+
 
 int answer_to_connection (void *cls, struct MHD_Connection *connection,
                           const char *url,
@@ -276,10 +295,11 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
                 printf("Sensor id: '%s', auth_token: '%s'.\n", con_info->sensor_id, con_info->auth_token);
 
                 add_mqtt_user(mysql_client, con_info->sensor_id, con_info->auth_token, 0);
+                add_mqtt_acl(mysql_client, con_info->sensor_id, "house/temperature", MQTT_ACL_WRITE);
 
                 char *client_authorization_topic = (char *)malloc((strlen("house/authorization/") + strlen(con_info->sensor_id) + 1) * sizeof(char));
                 sprintf(client_authorization_topic, "house/authorization/%s", con_info->sensor_id);
-                publish_message(mqtt_client, client_authorization_topic, con_info->auth_token, strlen(con_info->auth_token) + 1);
+                publish_message(client_authorization_topic, con_info->auth_token, strlen(con_info->auth_token) + 1);
                 free(client_authorization_topic);
  
                 return redirect_to_home_page(connection);
@@ -290,41 +310,30 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
     return MHD_NO;
 }
 
-typedef struct MQTT_CONNECTION_INFO {
-  MQTTClient *mqtt_client;
-  char *username;
-  char *password;
-} MQTT_CONNECTION_INFO;
-
 int process_mqtt_message(void *context, char *topic_name, int topic_len, MQTTClient_message *message)
 {
     if (strcmp(topic_name, AUTHORIZATION_REQUEST_TOPIC) == 0) 
     {
         printf("Authorization request for client_id '%s'.\n", message->payload);
 
-        if (context != NULL)
+        int i;
+        for (i = 0; i < SENSOR_LIST_SIZE; i++)
         {
-            MQTTClient* mqtt_client = ((MQTT_CONNECTION_INFO*)context)->mqtt_client;
-
-            int i;
-            for (i = 0; i < SENSOR_LIST_SIZE; i++)
+            if (sensor_list[i] != NULL && strcmp(sensor_list[i], message->payload) == 0)
             {
-                if (sensor_list[i] != NULL && strcmp(sensor_list[i], message->payload) == 0)
-                {
-                    printf("Authorization request for client_id '%s' already exists.\n");
-                    goto end_processing;
-                }
+                printf("Authorization request for client_id '%s' already exists.\n");
+                goto end_processing;
             }
+        }
 
-            if (sensor_list[current_sensor_list_element] != NULL)
-                free(sensor_list[current_sensor_list_element]);
-            sensor_list[current_sensor_list_element] = strdup(message->payload);
+        if (sensor_list[current_sensor_list_element] != NULL)
+            free(sensor_list[current_sensor_list_element]);
+        sensor_list[current_sensor_list_element] = strdup(message->payload);
 
-            if (current_sensor_list_element + 1 < SENSOR_LIST_SIZE)
-                current_sensor_list_element++;
-            else
-                current_sensor_list_element = 0;
-       }
+        if (current_sensor_list_element + 1 < SENSOR_LIST_SIZE)
+            current_sensor_list_element++;
+        else
+            current_sensor_list_element = 0;
     }
     else
     {
@@ -338,18 +347,18 @@ end_processing:
     return 1;
 }
 
-void connect_to_mqtt_broker(MQTTClient* mqtt_client, char *username, char *password)
+void connect_to_mqtt_broker()
 {
     int rc;
     MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
     conn_opts.keepAliveInterval = 20;
     conn_opts.cleansession = 0;
     conn_opts.connectTimeout = 10;
-    conn_opts.username = username;
-    conn_opts.password = password;
+    conn_opts.username = mqtt_username;
+    conn_opts.password = mqtt_password;
 
     do {
-        if ((rc = MQTTClient_connect(*mqtt_client, &conn_opts)) != MQTTCLIENT_SUCCESS)
+        if ((rc = MQTTClient_connect(mqtt_client, &conn_opts)) != MQTTCLIENT_SUCCESS)
         {
             printf("Failed to connect to MQTT broker '%s', return code %d.\n", MQTT_BROKER_ADDRESS, rc);
             sleep(1);
@@ -360,11 +369,11 @@ void connect_to_mqtt_broker(MQTTClient* mqtt_client, char *username, char *passw
     printf("Connected to '%s'.\n", MQTT_BROKER_ADDRESS);
 }
 
-void disconnect_from_mqtt_broker(MQTTClient* mqtt_client)
+void disconnect_from_mqtt_broker()
 {
     int rc;
 
-    if ((rc = MQTTClient_disconnect(*mqtt_client, 10000)) != MQTTCLIENT_SUCCESS)
+    if ((rc = MQTTClient_disconnect(mqtt_client, 10000)) != MQTTCLIENT_SUCCESS)
         printf("Failed to disconnect MQTT client, return code %d.\n", rc);
     else
         printf("Disconnected from '%s'.\n", MQTT_BROKER_ADDRESS);
@@ -377,11 +386,11 @@ void process_delivered(void *context, MQTTClient_deliveryToken dt)
     deliveredtoken = dt;
 }
 
-void subscribe_to_topic(MQTTClient* mqtt_client, char *topic)
+void subscribe_to_topic(char *topic)
 {
     int rc;
 
-    if ((rc = MQTTClient_subscribe(*mqtt_client, topic, 0)) != MQTTCLIENT_SUCCESS)
+    if ((rc = MQTTClient_subscribe(mqtt_client, topic, 0)) != MQTTCLIENT_SUCCESS)
     {
         printf("Failed to subscribe to topic '%s', return code %d.\n", topic, rc);
         exit(EXIT_FAILURE);
@@ -390,11 +399,11 @@ void subscribe_to_topic(MQTTClient* mqtt_client, char *topic)
     printf("Subscribed to topic '%s'.\n", topic);
 }
 
-void unsubscribe_from_topic(MQTTClient* mqtt_client, char *topic)
+void unsubscribe_from_topic(char *topic)
 {
     int rc;
 
-    if ((rc = MQTTClient_unsubscribe(*mqtt_client, topic)) != MQTTCLIENT_SUCCESS)
+    if ((rc = MQTTClient_unsubscribe(mqtt_client, topic)) != MQTTCLIENT_SUCCESS)
     {
         printf("Failed to unsubscribe from topic '%s', return code %d.\n", topic, rc);
         exit(EXIT_FAILURE);
@@ -408,28 +417,27 @@ void process_connection_lost(void *context, char *cause)
     printf("Connection to '%s' lost.\n", MQTT_BROKER_ADDRESS);
     if (context != NULL)
     {
-        MQTT_CONNECTION_INFO* connection_info = (MQTT_CONNECTION_INFO*)context;
-        connect_to_mqtt_broker(connection_info->mqtt_client, connection_info->username, connection_info->password);
-        subscribe_to_topic(connection_info->mqtt_client, AUTHORIZATION_REQUEST_TOPIC);
+        connect_to_mqtt_broker();
+        subscribe_to_topic(AUTHORIZATION_REQUEST_TOPIC);
     }
 }
 
-void init_mqtt_client(MQTTClient* mqtt_client)
+void init_mqtt_client()
 {
     int rc;
 
-    if ((rc = MQTTClient_create(mqtt_client, MQTT_BROKER_ADDRESS, MQTT_MODULE_CLIENT_ID, MQTTCLIENT_PERSISTENCE_NONE, NULL)) != MQTTCLIENT_SUCCESS)
+    if ((rc = MQTTClient_create(&mqtt_client, MQTT_BROKER_ADDRESS, MQTT_MODULE_CLIENT_ID, MQTTCLIENT_PERSISTENCE_NONE, NULL)) != MQTTCLIENT_SUCCESS)
     {
         printf("Failed to create MQTT client, return code %d.\n", rc);
         exit(EXIT_FAILURE);
     }
 }
 
-void set_mqtt_callbacks(MQTTClient* mqtt_client, MQTT_CONNECTION_INFO *context)
+void set_mqtt_callbacks()
 {
     int rc;
 
-    if ((rc = MQTTClient_setCallbacks(*mqtt_client, context, process_connection_lost, process_mqtt_message, process_delivered)) != MQTTCLIENT_SUCCESS)
+    if ((rc = MQTTClient_setCallbacks(mqtt_client, NULL, process_connection_lost, process_mqtt_message, NULL)) != MQTTCLIENT_SUCCESS)
     {
         printf("Failed to set callbacks for MQTT client, return code %d.\n", rc);
         exit(EXIT_FAILURE);
@@ -497,19 +505,18 @@ int main()
 {
     subscribe_to_signals();
 
-    char *mqtt_password = generate_random_password();
 
     mysql_client = mqtt_db_init();
     mqtt_db_connect(mysql_client);
+
+    mqtt_password = generate_random_password();
     add_mqtt_user(mysql_client, MQTT_MODULE_CLIENT_ID, mqtt_password, 1);
 
-    init_mqtt_client(&mqtt_client);
+    init_mqtt_client();
 
-    MQTT_CONNECTION_INFO info = { .mqtt_client = &mqtt_client, .username = MQTT_MODULE_CLIENT_ID, .password = mqtt_password };
-
-    set_mqtt_callbacks(&mqtt_client, &info);
-    connect_to_mqtt_broker(&mqtt_client, MQTT_MODULE_CLIENT_ID, mqtt_password);
-    subscribe_to_topic(&mqtt_client, AUTHORIZATION_REQUEST_TOPIC);
+    set_mqtt_callbacks();
+    connect_to_mqtt_broker();
+    subscribe_to_topic(AUTHORIZATION_REQUEST_TOPIC);
 
     struct MHD_Daemon *daemon;
     daemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY, HTTP_SERVER_PORT, NULL, NULL, &answer_to_connection, NULL, MHD_OPTION_NOTIFY_COMPLETED, &request_completed, NULL, MHD_OPTION_END);
@@ -524,8 +531,8 @@ int main()
     MHD_stop_daemon (daemon);
 
 stop:
-    unsubscribe_from_topic(&mqtt_client, AUTHORIZATION_REQUEST_TOPIC);
-    disconnect_from_mqtt_broker(&mqtt_client);
+    unsubscribe_from_topic(AUTHORIZATION_REQUEST_TOPIC);
+    disconnect_from_mqtt_broker();
     MQTTClient_destroy(&mqtt_client);
 
     mysql_close(mysql_client);

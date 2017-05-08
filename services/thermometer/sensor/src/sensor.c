@@ -237,7 +237,7 @@ int main(int argc, char* argv[])
             temperature = generate_next_temperature(temperature, min_temperature, max_temperature);
             sprintf(&temperature_str, "%d", temperature);
 
-            publish_message(&anonymous_mqtt_client, TEMPERATURE_TOPIC, temperature_str, strlen(temperature_str) + 1);
+            publish_message(&authenticated_mqtt_client, TEMPERATURE_TOPIC, temperature_str, strlen(temperature_str) + 1);
             printf("Published temperature: %d\n", temperature);
             sleep(60);
         }
