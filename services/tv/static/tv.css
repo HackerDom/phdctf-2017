@@ -1,0 +1,13 @@
+body {
+    font-family: "Courier New";
+}
+
+div.main {
+    width: 960;
+    margin: 0 auto;
+}
+
+div.settings {
+    width: 320;
+    margin: 0 0 0 auto;
+}

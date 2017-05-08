@@ -1,0 +1,44 @@
+<html>
+    <head>
+        <title>TV</title>
+        <link rel="stylesheet" type="text/css" href="/static/tv.css">
+    </head>
+    <body>
+        <div class="main">
+            <div class="settings">
+                {{if .User}}
+                    <span>{{.User.Value }} (<a href="/logout">Logout</a>)</span>
+                {{else}}
+                    <form method="POST" action="/create">
+                        <input type="submit" value="Create account">
+                    </form>
+                    <form method="POST" action="/login">
+                        <input type="text" name="login" size="12">
+                        <input type="password" name="pass" size="8">
+                        <input type="submit" value="Login">
+                    </form>
+                {{end}}
+            </div>
+            <h1>Hi, I'm TV!</h1>
+            {{if .Flash}}
+                <h2>{{.Flash.Value}}</h2>
+            {{end}}
+            {{if .User}}
+                <h2>Upload new photo</h2>
+                <form method="POST" action="/upload" enctype="multipart/form-data">
+                    Comment: <input type="text" name="info">
+                    <input type="file" accept="image/png,image/jpg" name="image">
+                    <input type="submit" value="Upload">
+                </form>
+                <hr>
+                <h2>Latest photos</h2>
+                {{$u := .User.Value}}
+                {{range $i := .Images}}
+                    <img src="/static/{{$u}}/{{$i}}">
+                {{end}}
+            {{else}}
+                <span>You can create account or login to upload and watch your photos on TV.</span>
+            {{end}}
+        </div>
+    </body>
+</html>
