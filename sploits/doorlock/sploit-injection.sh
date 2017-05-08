@@ -9,9 +9,9 @@ then
     exit 1
 fi
 
-for id in `seq $2 999`
+for id in `seq $2 9999`
 do
-    FLAG=`coap -T get "coap://127.0.0.1/get_card?lock=_&card=$id)(%26))"`
+    FLAG=`coap -T get "coap://$1/get_card?lock=_&card=$id)(%26))"`
     echo $id: $FLAG
     if [[ $FLAG == *EMPTY* ]]
     then
