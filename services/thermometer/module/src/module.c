@@ -172,7 +172,7 @@ void request_completed(void* cls, struct MHD_Connection* connection,
     *con_cls = NULL;
 }
 
-void publish_message(const MQTTClient* client, char* topic, void* payload, int payloadlen)
+void publish_message(MQTTClient* client, char* topic, void* payload, int payloadlen)
 {
     int rc;
     MQTTClient_message msg = MQTTClient_message_initializer;
@@ -192,19 +192,24 @@ void publish_message(const MQTTClient* client, char* topic, void* payload, int p
     printf("Published message to topic '%s'.\n", topic);
 }
 
-void add_mqtt_user(MYSQL *mysql, char *user, char *password)
+void add_mqtt_user(MYSQL *mysql, char *user, char *password, int update_existing)
 {
-    char *query = (char *)malloc((strlen("INSERT INTO users (username, pw) VALUES(\"\", \"\") ON DUPLICATE KEY UPDATE username=\"\", pw=\"\"") + strlen(user)*2 + strlen(password)*2 + 1) * sizeof(char));
-    sprintf(query, "INSERT INTO users (username, pw) VALUES(\"%s\", \"%s\") ON DUPLICATE KEY UPDATE username=\"%s\", pw=\"%s\"", user, password, user, password);
-    if (mysql_query(mysql, query)) 
+    char *query;
+    if (update_existing)
     {
-        printf("Failed to add MQTT user: %s\n", mysql_error(mysql));
-        free(query);
-        mysql_close(mysql);
-        exit(EXIT_FAILURE);
+        query = (char *)malloc((strlen("INSERT INTO users (username, pw) VALUES(\"\", \"\") ON DUPLICATE KEY UPDATE username=\"\", pw=\"\"") + strlen(user)*2 + strlen(password)*2 + 1) * sizeof(char));
+        sprintf(query, "INSERT INTO users (username, pw) VALUES(\"%s\", \"%s\") ON DUPLICATE KEY UPDATE username=\"%s\", pw=\"%s\"", user, password, user, password);
+    }
+    else
+    {
+        query = (char *)malloc((strlen("INSERT INTO users (username, pw) VALUES(\"\", \"\")") + strlen(user) + strlen(password) + 1) * sizeof(char));
+        sprintf(query, "INSERT INTO users (username, pw) VALUES(\"%s\", \"%s\")", user, password);
     }
 
-    printf("Added MQTT user %s.\n", user);
+    if (mysql_query(mysql, query)) 
+        printf("Failed to add MQTT user: %s\n", mysql_error(mysql));
+    else
+        printf("Added MQTT user %s.\n", user);
 
     free(query);
 }
@@ -270,7 +275,7 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
             {
                 printf("Sensor id: '%s', auth_token: '%s'.\n", con_info->sensor_id, con_info->auth_token);
 
-                add_mqtt_user(mysql_client, con_info->sensor_id, con_info->auth_token);
+                add_mqtt_user(mysql_client, con_info->sensor_id, con_info->auth_token, 0);
 
                 char *client_authorization_topic = (char *)malloc((strlen("house/authorization/") + strlen(con_info->sensor_id) + 1) * sizeof(char));
                 sprintf(client_authorization_topic, "house/authorization/%s", con_info->sensor_id);
@@ -496,9 +501,9 @@ int main()
 
     mysql_client = mqtt_db_init();
     mqtt_db_connect(mysql_client);
-    add_mqtt_user(mysql_client, MQTT_MODULE_CLIENT_ID, mqtt_password);
+    add_mqtt_user(mysql_client, MQTT_MODULE_CLIENT_ID, mqtt_password, 1);
 
-    init_mqtt_client(mqtt_client);
+    init_mqtt_client(&mqtt_client);
 
     MQTT_CONNECTION_INFO info = { .mqtt_client = &mqtt_client, .username = MQTT_MODULE_CLIENT_ID, .password = mqtt_password };
 
