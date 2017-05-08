@@ -188,6 +188,23 @@ static void ldap_get_card( coap_pdu_t *response, char *query )
 	}
 }
 
+void url_decode(char *s) {
+    int n = strlen(s);
+    int src = 0, dst = 0;
+    while (src < n) {
+        if (s[src] == '%' && src+2 < n) {
+            s[dst] = ((s[src+1]-'0')<<4) | (s[src+2]-'0');
+            src += 3;
+        }
+        else {
+            s[dst] = s[src];
+            src += 1;
+        }
+        dst++;
+    }
+    s[dst] = 0;
+}
+
 void ldap_sanitize(char s[]) {
     int depth = 0;
     for (int i = 0; i < strlen(s); ++i) {
@@ -246,12 +263,15 @@ static void hnd_register_lock(
       *eq = 0;
       if (0 == strcmp("model", buf)) {
         strncpy(model, eq + 1, std::min(63, (int)strlen(eq + 1)));
+        url_decode(model);
       }
       if (0 == strcmp("floor", buf)) {
         strncpy(floor, eq + 1, std::min(7, (int)strlen(eq + 1)));
+        url_decode(floor);
       }
       if (0 == strcmp("room", buf)) {
         strncpy(room, eq + 1, std::min(7, (int)strlen(eq + 1)));
+        url_decode(room);
       }
     }
     option = coap_option_next(&opt_iter);
@@ -305,12 +325,15 @@ static void hnd_add_card(
       *eq = 0;
       if (0 == strcmp("lock", buf)) {
         strncpy(lock, eq + 1, std::min(63, (int)strlen(eq + 1)));
+        url_decode(lock);
       }
       if (0 == strcmp("card", buf)) {
         strncpy(card, eq + 1, std::min(63, (int)strlen(eq + 1)));
+        url_decode(card);
       }
       if (0 == strcmp("tag", buf)) {
         strncpy(tag, eq + 1, std::min(63, (int)strlen(eq + 1)));
+        url_decode(tag);
       }
     }
     option = coap_option_next(&opt_iter);
@@ -350,9 +373,11 @@ static void hnd_get_card(
       *eq = 0;
       if (0 == strcmp("lock", buf)) {
         strncpy(lock, eq + 1, std::min(63, (int)strlen(eq + 1)));
+        url_decode(lock);
       }
       if (0 == strcmp("card", buf)) {
         strncpy(card, eq + 1, std::min(63, (int)strlen(eq + 1)));
+        url_decode(card);
       }
     }
     option = coap_option_next(&opt_iter);
