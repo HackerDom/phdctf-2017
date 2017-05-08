@@ -84,7 +84,7 @@ int send_page(const char *page, struct MHD_Connection *connection)
 
 int send_home_page(struct MHD_Connection *connection)
 {
-    const char *page = "<html><body><ul><li><a href=\"/sensors\">Authorize temperature sensor</a></li><li><a href=\"/clients\">Authorize client</a></li><li><a href=\"/api/generate\">Generate API key</a></li></ul></body></html>";
+    const char *page = "<html><body><ul><li><a href=\"/sensors\">Authorize temperature sensor</a></li><li><a href=\"/clients\">Authorize client</a></li></ul></body></html>";
     return send_page(page, connection);
 }
 
@@ -119,8 +119,14 @@ int send_sensors_page(struct MHD_Connection *connection)
             strcat(page, "</option>");
         }
     }
-    strcat(page, "</select></td></tr><tr><td>Auth token:</td><td><input type='text' name='token'/></td></tr><td colspan='2'><input type='submit' value='submit'/></td></tr></table></form></body></html>");
+    strcat(page, "</select></td></tr><tr><td>Auth token:</td><td><input type='text' name='token'/></td></tr><tr><td colspan='2'><input type='submit' value='submit'/></td></tr></table></form></body></html>");
 
+    return send_page(page, connection);
+}
+
+int send_clients_page(struct MHD_Connection *connection)
+{
+    const char *page = "<html><body><form method='POST'><table><tr><td>Username:</td><td><input type='text' name='username'/></td></tr><tr><td>Password:</td><td><input type='password' name='password'/></td></tr><tr><td colspan='2'><input type='submit' value='submit'/></td></tr></table></body></html>";
     return send_page(page, connection);
 }
 
@@ -130,6 +136,9 @@ struct CONNECTION_HTTP_INFO {
 
   char *sensor_id;
   char *auth_token;
+
+  char *username;
+  char *password;
 };
 
 int iterate_post(void *coninfo_cls, enum MHD_ValueKind kind, const char *key,
@@ -149,6 +158,14 @@ int iterate_post(void *coninfo_cls, enum MHD_ValueKind kind, const char *key,
         {
             con_info->auth_token = strdup(data);
         }
+        else if (0 == strcmp(key, "username"))
+        {
+            con_info->username = strdup(data);
+        }
+        else if (0 == strcmp(key, "password"))
+        {
+            con_info->password = strdup(data);
+        }
     }
 
     return MHD_YES;
@@ -166,10 +183,28 @@ void request_completed(void* cls, struct MHD_Connection* connection,
         MHD_destroy_post_processor(con_info->post_processor);
 
         if (con_info->sensor_id)
+        {
             free(con_info->sensor_id);
+            con_info->sensor_id = NULL;
+        }
 
         if (con_info->auth_token)
+        {
             free(con_info->auth_token);
+            con_info->auth_token = NULL;
+        }
+
+        if (con_info->username)
+        {
+            free(con_info->username);
+            con_info->username = NULL;
+        }
+
+        if (con_info->password)
+        {
+            free(con_info->password);
+            con_info->password = NULL;
+        }
     }
 
     free(con_info);
@@ -302,6 +337,33 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
                 publish_message(client_authorization_topic, con_info->auth_token, strlen(con_info->auth_token) + 1);
                 free(client_authorization_topic);
  
+                return redirect_to_home_page(connection);
+            }
+        }
+    }
+
+    if (strcmp(url, "/clients") == 0)
+    {
+        if (0 == strcmp(method, MHD_HTTP_METHOD_GET))
+            return send_clients_page(connection);
+
+        if (0 == strcmp(method, MHD_HTTP_METHOD_POST))
+        {
+            struct CONNECTION_HTTP_INFO* con_info = *con_cls;
+            if (0 != *upload_data_size)
+            {
+                MHD_post_process(con_info->post_processor, upload_data, *upload_data_size);
+                *upload_data_size = 0;
+                return MHD_YES;
+            }
+
+            if (con_info->username != NULL && con_info->password != NULL)
+            {
+                printf("Username: '%s', password: '%s'.\n", con_info->username, con_info->password);
+
+                add_mqtt_user(mysql_client, con_info->username, con_info->password, 0);
+                add_mqtt_acl(mysql_client, con_info->username, "house/temperature", MQTT_ACL_READ);
+
                 return redirect_to_home_page(connection);
             }
         }
