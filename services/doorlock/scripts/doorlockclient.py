@@ -32,7 +32,7 @@ class DoorlockClient:
             diff = datetime.datetime.now() - t_start;
             t_diff = diff.seconds*1000 + diff.microseconds/1000
             self._log.error('Exception: %s in %d ms', e, t_diff)
-            return -1, None
+            return None, None
         else:
             diff = datetime.datetime.now() - t_start;
             t_diff = diff.seconds*1000 + diff.microseconds/1000
@@ -47,3 +47,6 @@ class DoorlockClient:
 
     async def get_card(self, lock, card):
         return await self._send(aiocoap.GET, 'get_card', {'lock': lock, 'card': card})
+
+    async def index(self):
+        return await self._send(aiocoap.GET, '', {})
