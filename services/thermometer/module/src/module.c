@@ -23,34 +23,38 @@
 #define MQTT_DB_USER                "thermometer_module"
 #define MQTT_DB_PASSWORD            "4VS6yKnPF9eLoZkB"
 #define SENSOR_LIST_SIZE            100
+#define GET                         0
+#define POST                        1
+#define POSTBUFFERSIZE              2048
 
 char *sensor_list[SENSOR_LIST_SIZE] = {0};
 int current_sensor_list_element = 0;
 
-int answer_to_connection (void *cls, struct MHD_Connection *connection,
-                          const char *url,
-                          const char *method, const char *version,
-                          const char *upload_data,
-                          size_t *upload_data_size, void **con_cls)
+MQTTClient mqtt_client;
+MYSQL *mysql_client;
+
+int send_auth_fail_response(struct MHD_Connection *connection)
 {
-    char *user;
-    char *pass;
-    int fail;
     int ret;
     struct MHD_Response *response;
 
-    if (0 != strcmp(method, MHD_HTTP_METHOD_GET))
-        return MHD_NO;
+    const char *page = "<html><body>Go away.</body></html>";
+    response = MHD_create_response_from_buffer(strlen(page), (void *)page, MHD_RESPMEM_PERSISTENT);
+    ret = MHD_queue_basic_auth_fail_response(connection, "my realm", response);
+    MHD_destroy_response(response);
 
-    if (NULL == *con_cls)
-    {
-        *con_cls = connection;
-        return MHD_YES;
-    }
+    return ret;
+}
+
+int check_auth(struct MHD_Connection *connection)
+{
+    char *user;
+    char *pass;
+    int success;
 
     pass = NULL;
     user = MHD_basic_auth_get_username_password(connection, &pass);
-    fail = ((user == NULL) || (0 != strcmp(user, "admin")) || (0 != strcmp(pass, "webrelay")));
+    success = (user != NULL) && (pass != NULL) && (0 == strcmp(user, "admin")) && (0 == strcmp(pass, "webrelay"));
 
     if (user != NULL)
         free(user);
@@ -58,53 +62,115 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
     if (pass != NULL)
         free(pass);
 
-    if (fail)
-    {
-        const char *page = "<html><body>Go away.</body></html>";
-        response = MHD_create_response_from_buffer(strlen(page), (void *)page, MHD_RESPMEM_PERSISTENT);
-        ret = MHD_queue_basic_auth_fail_response (connection, "my realm", response);
-    }
-    else
-    {
-        if (strcmp(url, "/sensors") == 0)
-        {
-            char page[1024 + SENSOR_LIST_SIZE*100];
-            strcpy(page, "<html><body><form><table><tr><td>Sensor ID:</td><td><select name='sensor'>");
-            int i;
-            for (i = 0; i < SENSOR_LIST_SIZE; i++)
-            {
-                if (sensor_list[i] != NULL)
-                {
-                    strcat(page, "<option value='");
-                    strcat(page, sensor_list[i]);
-                    strcat(page, "'>");
-                    strcat(page, sensor_list[i]);
-                    strcat(page, "</option>");
-                }
-            }
-            strcat(page, "</select></td></tr><tr><td>Auth token:</td><td><input type='text' name='token'/></td></tr><td colspan='2'><input type='submit' name='submit'/></td></tr></table></form></body></html>");
-            response = MHD_create_response_from_buffer (strlen (page), (void*) page, MHD_RESPMEM_PERSISTENT);
-        }
-        else
-        {
-            const char *page = "<html><body><ul><li><a href=\"/sensors\">Authorize temperature sensor</a></li><li><a href=\"/clients\">Authorize client</a></li><li><a href=\"/api/generate\">Generate API key</a></li></ul></body></html>";
-            response = MHD_create_response_from_buffer (strlen (page), (void*) page, MHD_RESPMEM_PERSISTENT);
-        }
+    return success;
+}
 
-        ret = MHD_queue_response (connection, MHD_HTTP_OK, response);
-    }
+int send_page(const char *page, struct MHD_Connection *connection)
+{
+    int ret;
+    struct MHD_Response *response;
 
-    MHD_destroy_response (response);
+    response = MHD_create_response_from_buffer(strlen (page), (void*) page, MHD_RESPMEM_PERSISTENT);
+    ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+    MHD_destroy_response(response);
+
     return ret;
 }
 
-typedef struct MQTT_CONNECTION_INFO {
-  MQTTClient *mqtt_client;
-  char *username;
-  char *password;
-} MQTT_CONNECTION_INFO;
+int send_home_page(struct MHD_Connection *connection)
+{
+    const char *page = "<html><body><ul><li><a href=\"/sensors\">Authorize temperature sensor</a></li><li><a href=\"/clients\">Authorize client</a></li><li><a href=\"/api/generate\">Generate API key</a></li></ul></body></html>";
+    return send_page(page, connection);
+}
 
+int redirect_to_home_page(struct MHD_Connection *connection)
+{
+    int ret;
+    struct MHD_Response *response;
 
+    const char *page = "<html><body><b>302 Found</b></body></html>";
+    response = MHD_create_response_from_buffer(strlen (page), (void*) page, MHD_RESPMEM_PERSISTENT);
+    MHD_add_response_header(response, MHD_HTTP_HEADER_LOCATION, "/");
+    ret = MHD_queue_response (connection, MHD_HTTP_FOUND, response);
+    MHD_destroy_response(response);
+
+    return ret;
+}
+
+int send_sensors_page(struct MHD_Connection *connection)
+{
+    int i;
+    char page[1024 + SENSOR_LIST_SIZE*100];
+    strcpy(page, "<html><body><form method='POST'><table><tr><td>Sensor ID:</td><td><select name='sensor'>");
+
+    for (i = 0; i < SENSOR_LIST_SIZE; i++)
+    {
+        if (sensor_list[i] != NULL)
+        {
+            strcat(page, "<option value='");
+            strcat(page, sensor_list[i]);
+            strcat(page, "'>");
+            strcat(page, sensor_list[i]);
+            strcat(page, "</option>");
+        }
+    }
+    strcat(page, "</select></td></tr><tr><td>Auth token:</td><td><input type='text' name='token'/></td></tr><td colspan='2'><input type='submit' value='submit'/></td></tr></table></form></body></html>");
+
+    return send_page(page, connection);
+}
+
+struct CONNECTION_HTTP_INFO {
+  int connection_type;
+  struct MHD_PostProcessor* post_processor;
+
+  char *sensor_id;
+  char *auth_token;
+};
+
+int iterate_post(void *coninfo_cls, enum MHD_ValueKind kind, const char *key,
+                 const char *filename, const char *content_type,
+                 const char *transfer_encoding, const char *data, uint64_t off,
+                 size_t size)
+{
+    struct CONNECTION_HTTP_INFO* con_info = coninfo_cls;
+
+    if (size > 0)
+    {
+        if (0 == strcmp(key, "sensor"))
+        {
+            con_info->sensor_id = strdup(data);
+        }
+        else if (0 == strcmp(key, "token"))
+        {
+            con_info->auth_token = strdup(data);
+        }
+    }
+
+    return MHD_YES;
+}
+
+void request_completed(void* cls, struct MHD_Connection* connection,
+                       void** con_cls, enum MHD_RequestTerminationCode toe)
+{
+    struct CONNECTION_HTTP_INFO* con_info = *con_cls;
+    if (NULL == con_info)
+        return;
+
+    if (con_info->connection_type == POST)
+    {
+        MHD_destroy_post_processor(con_info->post_processor);
+
+        if (con_info->sensor_id)
+            free(con_info->sensor_id);
+
+        if (con_info->auth_token)
+            free(con_info->auth_token);
+    }
+
+    free(con_info);
+    con_info = NULL;
+    *con_cls = NULL;
+}
 
 void publish_message(const MQTTClient* client, char* topic, void* payload, int payloadlen)
 {
@@ -125,6 +191,105 @@ void publish_message(const MQTTClient* client, char* topic, void* payload, int p
 
     printf("Published message to topic '%s'.\n", topic);
 }
+
+void add_mqtt_user(MYSQL *mysql, char *user, char *password)
+{
+    char *query = (char *)malloc((strlen("INSERT INTO users (username, pw) VALUES(\"\", \"\") ON DUPLICATE KEY UPDATE username=\"\", pw=\"\"") + strlen(user)*2 + strlen(password)*2 + 1) * sizeof(char));
+    sprintf(query, "INSERT INTO users (username, pw) VALUES(\"%s\", \"%s\") ON DUPLICATE KEY UPDATE username=\"%s\", pw=\"%s\"", user, password, user, password);
+    if (mysql_query(mysql, query)) 
+    {
+        printf("Failed to add MQTT user: %s\n", mysql_error(mysql));
+        free(query);
+        mysql_close(mysql);
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Added MQTT user %s.\n", user);
+
+    free(query);
+}
+
+int answer_to_connection (void *cls, struct MHD_Connection *connection,
+                          const char *url,
+                          const char *method, const char *version,
+                          const char *upload_data,
+                          size_t *upload_data_size, void **con_cls)
+{
+    if (NULL == *con_cls)
+    {
+        struct CONNECTION_HTTP_INFO* con_info;
+        con_info = malloc (sizeof (struct CONNECTION_HTTP_INFO));
+        if (NULL == con_info)
+            return MHD_NO;
+
+        if (0 == strcmp(method, "POST"))
+        {
+            con_info->post_processor = MHD_create_post_processor(connection, POSTBUFFERSIZE, iterate_post, (void*) con_info);
+            if (NULL == con_info->post_processor) 
+            {
+                free(con_info);
+                return MHD_NO;
+            }
+
+            con_info->connection_type = POST;
+        }
+        else
+            con_info->connection_type = GET;
+
+        *con_cls = (void *)con_info;
+        return MHD_YES;
+    }
+
+    if (!check_auth(connection))
+        return send_auth_fail_response(connection);
+
+    if (0 == strcmp(url, "/"))
+    {
+        if (0 != strcmp(method, MHD_HTTP_METHOD_GET))
+            return MHD_NO;
+
+        return send_home_page(connection);
+    }
+
+    if (strcmp(url, "/sensors") == 0)
+    {
+        if (0 == strcmp(method, MHD_HTTP_METHOD_GET))
+            return send_sensors_page(connection);
+
+        if (0 == strcmp(method, MHD_HTTP_METHOD_POST))
+        {
+            struct CONNECTION_HTTP_INFO* con_info = *con_cls;
+            if (0 != *upload_data_size)
+            {
+                MHD_post_process(con_info->post_processor, upload_data, *upload_data_size);
+                *upload_data_size = 0;
+                return MHD_YES;
+            }
+
+            if (con_info->sensor_id != NULL && con_info->auth_token != NULL)
+            {
+                printf("Sensor id: '%s', auth_token: '%s'.\n", con_info->sensor_id, con_info->auth_token);
+
+                add_mqtt_user(mysql_client, con_info->sensor_id, con_info->auth_token);
+
+                char *client_authorization_topic = (char *)malloc((strlen("house/authorization/") + strlen(con_info->sensor_id) + 1) * sizeof(char));
+                sprintf(client_authorization_topic, "house/authorization/%s", con_info->sensor_id);
+                publish_message(mqtt_client, client_authorization_topic, con_info->auth_token, strlen(con_info->auth_token) + 1);
+                free(client_authorization_topic);
+ 
+                return redirect_to_home_page(connection);
+            }
+        }
+    }
+
+    return MHD_NO;
+}
+
+typedef struct MQTT_CONNECTION_INFO {
+  MQTTClient *mqtt_client;
+  char *username;
+  char *password;
+} MQTT_CONNECTION_INFO;
 
 int process_mqtt_message(void *context, char *topic_name, int topic_len, MQTTClient_message *message)
 {
@@ -154,13 +319,7 @@ int process_mqtt_message(void *context, char *topic_name, int topic_len, MQTTCli
                 current_sensor_list_element++;
             else
                 current_sensor_list_element = 0;
-
-            char *client_authorization_topic = (char *)malloc((strlen("house/authorization/") + strlen(message->payload) + 1) * sizeof(char));
-            sprintf(client_authorization_topic, "house/authorization/%s", message->payload);
-            char* password = "Pass";
-            publish_message(mqtt_client, client_authorization_topic, password, strlen(password) + 1);
-            free(client_authorization_topic);
-        }
+       }
     }
     else
     {
@@ -316,23 +475,6 @@ void mqtt_db_connect(MYSQL* mysql)
     printf("Connected to '%s:%d'.\n", MQTT_DB_HOST, MQTT_DB_PORT);
 }
 
-void add_mqtt_user(MYSQL *mysql, char *user, char *password)
-{
-    char *query = (char *)malloc((strlen("INSERT INTO users (username, pw) VALUES(\"\", \"\") ON DUPLICATE KEY UPDATE username=\"\", pw=\"\"") + strlen(user)*2 + strlen(password)*2 + 1) * sizeof(char));
-    sprintf(query, "INSERT INTO users (username, pw) VALUES(\"%s\", \"%s\") ON DUPLICATE KEY UPDATE username=\"%s\", pw=\"%s\"", user, password, user, password);
-    if (mysql_query(mysql, query)) 
-    {
-        printf("Failed to add MQTT user: %s\n", mysql_error(mysql));
-        free(query);
-        mysql_close(mysql);
-        exit(EXIT_FAILURE);
-    }
-
-    printf("Added MQTT user %s.\n", user);
-
-    free(query);
-}
-
 char* generate_random_password()
 {
     uuid_t uuid;
@@ -352,12 +494,11 @@ int main()
 
     char *mqtt_password = generate_random_password();
 
-    MYSQL *mysql = mqtt_db_init();
-    mqtt_db_connect(mysql);
-    add_mqtt_user(mysql, MQTT_MODULE_CLIENT_ID, mqtt_password);
+    mysql_client = mqtt_db_init();
+    mqtt_db_connect(mysql_client);
+    add_mqtt_user(mysql_client, MQTT_MODULE_CLIENT_ID, mqtt_password);
 
-    MQTTClient mqtt_client;
-    init_mqtt_client(&mqtt_client);
+    init_mqtt_client(mqtt_client);
 
     MQTT_CONNECTION_INFO info = { .mqtt_client = &mqtt_client, .username = MQTT_MODULE_CLIENT_ID, .password = mqtt_password };
 
@@ -366,7 +507,7 @@ int main()
     subscribe_to_topic(&mqtt_client, AUTHORIZATION_REQUEST_TOPIC);
 
     struct MHD_Daemon *daemon;
-    daemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY, HTTP_SERVER_PORT, NULL, NULL, &answer_to_connection, NULL, MHD_OPTION_END);
+    daemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY, HTTP_SERVER_PORT, NULL, NULL, &answer_to_connection, NULL, MHD_OPTION_NOTIFY_COMPLETED, &request_completed, NULL, MHD_OPTION_END);
     if (NULL == daemon)
         goto stop;
 
@@ -382,7 +523,7 @@ stop:
     disconnect_from_mqtt_broker(&mqtt_client);
     MQTTClient_destroy(&mqtt_client);
 
-    mysql_close(mysql);
+    mysql_close(mysql_client);
     free(mqtt_password);
 
     return 0;
