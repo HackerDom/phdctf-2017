@@ -1,0 +1,14 @@
+BUILD DOCKER CONTAINER:
+
+    ./docker-build.sh
+
+
+CREATE VOLUME FOR LDAP DATA:
+
+    ./docker-create-volume.sh
+
+
+RUN DOCKER CONTAINER:
+
+    ./docker-run.sh
+
