@@ -26,10 +26,12 @@ do
     FLAG=`< /dev/urandom tr -dc A-Z | head -c31`=
 
     FLAG_ID=`/usr/bin/time -qf "$TIMEFMT" $CHECKER put $1 FAKE_ID $FLAG`
+    CODE=$?
     echo ">>> put: code=$CODE"
     if [ $CODE -ne 101 ]; then continue; fi
 
     FLAG_ID=`/usr/bin/time -qf "$TIMEFMT" $CHECKER get $1 $FLAG_ID $FLAG`
+    CODE=$?
     echo ">>> get: code=$CODE"
     if [ $CODE -ne 101 ]; then continue; fi
 done
