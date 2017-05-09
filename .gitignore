@@ -46,3 +46,6 @@ docs/_build/
 .venv
 venv/
 ENV/
+
+# Libraries
+*.so
