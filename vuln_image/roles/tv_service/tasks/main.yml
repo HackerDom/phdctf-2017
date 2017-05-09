@@ -1,0 +1,37 @@
+---
+
+- name: Copy tv service from host
+  copy:
+    src: ../services/tv
+    dest: /home/user/
+    owner: user
+    group: user
+
+- name: Download tv service docker image
+  get_url:
+    url: https://www.dropbox.com/s/nybl1wrizml36nw/phdays_ctf_tv.tgz?dl=1
+    dest: /tmp/phdays_ctf_tv.tgz
+
+- name: Unzip tv service docker image
+  command: gunzip /tmp/phdays_ctf_tv.tgz creates=/tmp/phdays_ctf_tv.tar
+
+- name: Load tv service docker image
+  docker_image:
+    name: phdays_ctf_tv
+    tag: v2
+    load_path: /tmp/phdays_ctf_tv.tar
+
+- name: Copy systemd script
+  copy:
+    src: files/tv.service
+    dest: /etc/systemd/system
+
+- name: Force systemd to reread configs
+  systemd: daemon_reload=yes
+  changed_when: false
+
+- name: Enable tv service
+  systemd:
+    name: tv
+    enabled: yes
+    state: started
