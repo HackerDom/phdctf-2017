@@ -13,8 +13,7 @@
 - name: Add Docker repository
   apt_repository: repo='deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable' filename='docker.list' state=present update_cache=yes
 
-- name: Install docker and docker-compose
+- name: Install docker
   apt: name={{ item }} state=latest update_cache=yes
   with_items:
     - docker
-    - docker-compose

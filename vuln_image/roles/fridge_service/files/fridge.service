@@ -1,0 +1,12 @@
+[Unit]
+Description=Fridge Service
+Requires=docker.service
+After=docker.service
+
+[Service]
+Restart=always
+ExecStart=/usr/bin/docker-compose run -f /home/user/fridge/docker-compose.yml
+ExecStop=/usr/bin/docker-compose down -t 2 phdays_ctf_tv
+
+[Install]
+WantedBy=default.target

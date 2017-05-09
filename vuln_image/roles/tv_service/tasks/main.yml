@@ -7,19 +7,25 @@
     owner: user
     group: user
 
+- shell: docker images
+  register: docker_images
+
 - name: Download tv service docker image
   get_url:
     url: https://www.dropbox.com/s/nybl1wrizml36nw/phdays_ctf_tv.tgz?dl=1
     dest: /tmp/phdays_ctf_tv.tgz
+  when: docker_images.stdout.find('phdays_ctf_tv') == -1
 
 - name: Unzip tv service docker image
   command: gunzip /tmp/phdays_ctf_tv.tgz creates=/tmp/phdays_ctf_tv.tar
+  when: docker_images.stdout.find('phdays_ctf_tv') == -1
 
 - name: Load tv service docker image
   docker_image:
     name: phdays_ctf_tv
     tag: v2
     load_path: /tmp/phdays_ctf_tv.tar
+  when: docker_images.stdout.find('phdays_ctf_tv') == -1
 
 - name: Copy systemd script
   copy:
