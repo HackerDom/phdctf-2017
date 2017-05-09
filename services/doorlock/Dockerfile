@@ -14,9 +14,6 @@ COPY doorlock-server.cpp .
 COPY libs libs
 COPY include include
 
-# App binary
-COPY doorlock-server .
-
 COPY ldap/ldap-dpkg-reconfigure.sh .
 RUN /app/ldap-dpkg-reconfigure.sh
 
@@ -31,6 +28,9 @@ COPY ldap/ldap.cfg .
 COPY ldap/add-locks.ldif .
 
 COPY docker-wrapper.sh .
+
+RUN apt-get -y install g++ make libldap2-dev
+RUN make
 
 RUN useradd doorlock
 RUN chown -R doorlock.doorlock /app
