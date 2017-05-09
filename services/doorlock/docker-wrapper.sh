@@ -1,12 +1,16 @@
 #!/bin/bash
 
-/usr/sbin/slapd -h ldap:/// ldapi:/// -g openldap -u openldap -F /etc/ldap/slapd.d -d Any
+/usr/sbin/slapd -h ldap://127.0.0.1:389/ -g openldap -u openldap -F /etc/ldap/slapd.d -d Config &
 status=$?
 if [ $status -ne 0 ]; then
   echo "Failed to start slapd: $status"
   exit $status
 fi
 echo Started slapd
+
+sleep 5
+
+/app/ldap-init.sh
 
 /app/doorlock-server
 status=$?

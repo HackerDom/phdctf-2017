@@ -1,0 +1,2 @@
+apt-get install nodejs npm
+npm install coap-cli -g

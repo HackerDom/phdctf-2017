@@ -1,0 +1,12 @@
+[Unit]
+Description=TV Service
+Requires=docker.service
+After=docker.service
+
+[Service]
+Restart=always
+ExecStart=/usr/bin/docker run -d -ti --rm -p 8080:8080 -v /home/user/tv:/opt/tv -w /opt/tv --name phdays_ctf_tv phdays_ctf_tv:v2 bash start.sh
+ExecStop=/usr/bin/docker stop -t 2 phdays_ctf_tv
+
+[Install]
+WantedBy=default.target

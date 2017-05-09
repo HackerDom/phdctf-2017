@@ -153,39 +153,39 @@ static void ldap_get_card( coap_pdu_t *response, char *query )
   char *searchattrs[2] = { "cardTag", NULL };
 
   LDAPMessage *results;
-  int ret = ldap_search_s( ld, ldap_root,	LDAP_SCOPE_SUBTREE, query, searchattrs, 0, &results);
-	if (ret != LDAP_SUCCESS) {
-		fprintf( stderr, "ldap_search_s: %s (%d)\n", ldap_err2string(ret), ret );
-		send_response( response, 500, "ERROR" );
+  int ret = ldap_search_s( ld, ldap_root,  LDAP_SCOPE_SUBTREE, query, searchattrs, 0, &results);
+  if (ret != LDAP_SUCCESS) {
+    fprintf( stderr, "ldap_search_s: %s (%d)\n", ldap_err2string(ret), ret );
+    send_response( response, 500, "ERROR" );
     return;
-	}
+  }
 
   LDAPMessage *entry = ldap_first_entry( ld, results );
-	if ( entry ) {
+  if ( entry ) {
     BerElement *ber = NULL;
-  	char *attr = ldap_first_attribute( ld, entry, &ber );
-  	if ( attr ) {
+    char *attr = ldap_first_attribute( ld, entry, &ber );
+    if ( attr ) {
       char **vals = ldap_get_values( ld, entry, attr );
-    	if ( vals ) {
+      if ( vals ) {
         send_response( response, 205, vals[0] );
         ldap_value_free( vals );
       }
       else {
-    		send_response( response, 205, "EMPTY" );
-    	}
+        send_response( response, 205, "EMPTY" );
+      }
       ldap_memfree( attr );
     }
     else {
-  		send_response( response, 205, "EMPTY" );
-  	}
+      send_response( response, 205, "EMPTY" );
+    }
     if ( ber != NULL ) {
-  		ber_free(ber, 0);
-  	}
+      ber_free(ber, 0);
+    }
     ldap_msgfree( entry );
   }
   else {
-		send_response( response, 205, "EMPTY" );
-	}
+    send_response( response, 205, "EMPTY" );
+  }
 }
 
 void url_decode(char *s) {
@@ -486,10 +486,10 @@ int init_ldap()
   }
 
   ret = ldap_simple_bind_s( ld, ldap_user, ldap_pass );
-	if (ret) {
-		fprintf( stderr, "ldap_simple_bind_s" );
-		return ret;
-	}
+  if (ret) {
+    fprintf( stderr, "ldap_simple_bind_s" );
+    return ret;
+  }
 
   fprintf( stderr, "Connected to ldap: %s\n", ldap_url );
   return 0;

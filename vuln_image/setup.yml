@@ -1,0 +1,13 @@
+---
+
+- hosts: vuln_image
+#  vars:
+#    ansible_python_interpreter: /usr/bin/python3
+
+  roles:
+    - tv_service
+    - fridge_service
+
+  environment:
+    http_proxy: http://xz.avp.ru:8080
+    https_proxy: http://xz.avp.ru:8080
