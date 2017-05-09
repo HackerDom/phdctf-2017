@@ -24,13 +24,14 @@ do
     if [ $CODE -ne 101 ]; then continue; fi
 
     FLAG=`< /dev/urandom tr -dc A-Z | head -c31`=
+    VULN=$((1 + RANDOM % 2))
 
-    FLAG_ID=`/usr/bin/time -qf "$TIMEFMT" $CHECKER put $1 FAKE_ID $FLAG`
+    FLAG_ID=`/usr/bin/time -qf "$TIMEFMT" $CHECKER put $1 FAKE_ID $FLAG $VULN`
     CODE=$?
     echo ">>> put: code=$CODE"
     if [ $CODE -ne 101 ]; then continue; fi
 
-    FLAG_ID=`/usr/bin/time -qf "$TIMEFMT" $CHECKER get $1 $FLAG_ID $FLAG`
+    FLAG_ID=`/usr/bin/time -qf "$TIMEFMT" $CHECKER get $1 $FLAG_ID $FLAG $VULN`
     CODE=$?
     echo ">>> get: code=$CODE"
     if [ $CODE -ne 101 ]; then continue; fi

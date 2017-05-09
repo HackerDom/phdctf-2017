@@ -30,11 +30,11 @@ def do_async(task, timeout=3):
     return asyncio.get_event_loop().run_until_complete(time_limited_task)
 
 def info():
-    verdict(OK, "vulns: 1")
+    verdict(OK, "vulns: 2:8")
 
 def check(args):
     if len(args) != 1:
-        verdict(CHECKER_ERROR, "Not enough args", "Not enough args for check()")
+        verdict(CHECKER_ERROR, "Wrong args count", "Wrong args count for check()")
     host = args[0]
     trace("check(%s)" % host)
 
@@ -53,9 +53,9 @@ def check(args):
         verdict(OK)
 
 def put(args):
-    if len(args) != 3:
-        verdict(CHECKER_ERROR, "Not enough args", "Not enough args for put()")
-    host, flag_id, flag_data = args
+    if len(args) != 4:
+        verdict(CHECKER_ERROR, "Wrong args count", "Wrong args count for put()")
+    host, flag_id, flag_data, vuln = args
     trace("put(%s, %s, %s)" % (host, flag_id, flag_data))
 
     model = random_str(4, string.ascii_uppercase)
@@ -78,22 +78,31 @@ def put(args):
 
     trace("registered, lock_id: %s" % lock_id)
 
-    counter = 0
-    counter_file_name = COUNTERS_DIR + "/" + host
-    if os.path.isfile(counter_file_name):
-        with open(counter_file_name) as f:
-            counter = int(next(f))
-            trace("loaded counter (card_id) from file: %d" % counter)
+    if vuln == "1":
+        counter = 0
+        counter_file_name = COUNTERS_DIR + "/" + host
+        if os.path.isfile(counter_file_name):
+            with open(counter_file_name) as f:
+                counter = int(next(f))
+                trace("loaded counter (card_id) from file: %d" % counter)
 
-    counter += 1
-    with open(counter_file_name, 'w') as f:
-        f.write(str(counter))
-    trace("saved new counter (card_id) to file: %s" % counter)
+        counter += 1
+        with open(counter_file_name, 'w') as f:
+            f.write(str(counter))
+        trace("saved new counter (card_id) to file: %s" % counter)
 
-    trace("add_card(%s, %s, %s)" % (lock_id, counter, flag_data))
+        card_id = counter
+
+    elif vuln == "2":
+        card_id = 'secur' + random_str(8, string.ascii_lowercase)
+
+    else:
+        verdict(CHECKER_ERROR, "Bad args", "Bad args: unknown vuln type (%s)" % vuln)
+
+    trace("add_card(%s, %s, %s)" % (lock_id, card_id, flag_data))
 
     try:
-        code, data = do_async(client.add_card(lock_id, counter, flag_data))
+        code, data = do_async(client.add_card(lock_id, card_id, flag_data))
     except asyncio.TimeoutError:
         verdict(DOWN, "Timeout", "Timeout at add_card")
     if not code:
@@ -105,15 +114,15 @@ def put(args):
 
     trace("added card successfully")
 
-    flag_id = "%s-%s" % (lock_id, counter)
+    flag_id = "%s-%s" % (lock_id, card_id)
     trace("new flag_id: " + flag_id)
 
     verdict(OK, flag_id)
 
 def get(args):
-    if len(args) != 3:
-        verdict(CHECKER_ERROR, "Not enough args", "Not enough args for get()")
-    host, flag_id, flag_data = args
+    if len(args) != 4:
+        verdict(CHECKER_ERROR, "Wrong args count", "Wrong args count for get()")
+    host, flag_id, flag_data, vuln = args
     trace("get(%s, %s, %s)" % (host, flag_id, flag_data))
 
     lock_id, card_id = flag_id.split("-")
