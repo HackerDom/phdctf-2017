@@ -31,6 +31,11 @@ COPY ldap/ldap.cfg .
 COPY ldap/add-locks.ldif .
 
 COPY docker-wrapper.sh .
+
+RUN useradd doorlock
+RUN chown -R doorlock.doorlock /app
+USER doorlock
+
 CMD /app/docker-wrapper.sh
 
 EXPOSE 5683/udp
