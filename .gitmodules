@@ -1,0 +1,15 @@
+[submodule "services/thermometer/thermometer-sensor/paho.mqtt.c"]
+	path = services/thermometer/sensor/paho.mqtt.c
+	url = https://github.com/eclipse/paho.mqtt.c.git
+[submodule "services/thermometer/mosquitto-auth-plugin/mosquitto"]
+	path = services/thermometer/mosquitto-auth-plugin/mosquitto
+	url = https://github.com/eclipse/mosquitto.git
+[submodule "services/thermometer/mosquitto-auth-plugin/mosquitto-auth-plug"]
+	path = services/thermometer/mosquitto-auth-plugin/mosquitto-auth-plug
+	url = https://github.com/jpmens/mosquitto-auth-plug.git
+[submodule "services/thermometer/tests/mqtt-anonymous-auth/paho.mqtt.c"]
+	path = services/thermometer/tests/mqtt-anonymous-auth/paho.mqtt.c
+	url = https://github.com/eclipse/paho.mqtt.c.git
+[submodule "services/thermometer/module/paho.mqtt.c"]
+	path = services/thermometer/module/paho.mqtt.c
+	url = https://github.com/eclipse/paho.mqtt.c.git
