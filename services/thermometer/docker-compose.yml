@@ -40,6 +40,8 @@ services:
       - mqtt-broker
     ports:
       - "8888:8888"
+    security_opt:
+      - seccomp=unconfined
 
 volumes:
   mysql-data:

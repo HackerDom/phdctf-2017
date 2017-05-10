@@ -55,3 +55,4 @@ ENV/
 
 services/thermometer/sensor/sensor
 services/thermometer/module/module
+docker_images
