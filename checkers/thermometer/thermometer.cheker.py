@@ -42,9 +42,26 @@ def put(args):
 
     if vuln == "1":
         mqtt_client = MqttClient(host)
-        mqtt_client.register_sensor(flag_id)
+        result = mqtt_client.register_sensor(flag_id)
+        if result != OK:
+            sys.exit(result)
+
+        module_client = ThermometerModule(host)
+        module_client.authorize_sensor(flag_id, flag_data)
 
     verdict(OK)   
+
+def get(args):
+    if len(args) != 4:
+        verdict(CHECKER_ERROR, "Wrong args count", "Wrong args count for get()")
+    host, flag_id, flag_data, vuln = args
+    trace("get(%s, %s, %s, %s)" % (host, flag_id, flag_data, vuln))
+
+    if vuln == "1":
+        mqtt_client = MqttClient(host)
+        sys.exit(mqtt_client.check_connect(username=flag_id, password=flag_data))
+
+    return verdict(OK)
 
 def main(args):
     if len(args) == 0:

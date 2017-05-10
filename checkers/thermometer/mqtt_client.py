@@ -33,7 +33,7 @@ class MqttClient:
             trace("Connection to MQTT broker refused", "Connection to MQTT broker refused (code=%d): %s." % (rc, connack_string(rc)))
             self._check_result = DOWN
 
-    def check_connect(self):
+    def check_connect(self, username=None, password=None):
         try:
             self._mqtt_client.on_connect = self.on_connect
 
@@ -41,6 +41,8 @@ class MqttClient:
             signal.alarm(4)
 
             try:
+                if username != None and password != None:
+                    self._mqtt_client.username_pw_set(username, password)
                 self._mqtt_client.connect(self._broker_host, 1883, keepalive=10)
                 self._mqtt_client.loop_forever()
             except TimeoutError:
