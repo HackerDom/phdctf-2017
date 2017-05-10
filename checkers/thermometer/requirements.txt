@@ -1,0 +1,2 @@
+requests==2.14.1
+paho_mqtt==1.2.3
