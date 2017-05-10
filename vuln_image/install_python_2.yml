@@ -6,4 +6,4 @@
 
   tasks:
   - name: Install packages to allow apt to use a repository over HTTPS
-    apt: name=python2.7 state=latest
+    apt: name=python-minimal state=latest
