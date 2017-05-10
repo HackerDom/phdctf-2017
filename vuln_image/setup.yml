@@ -2,11 +2,9 @@
 
 - hosts: vuln_image
 
-#  vars:
-#    ansible_python_interpreter: /usr/bin/python2.7
-
   roles:
-    - tv_service
+    - thermometer_service
+#    - tv_service
 #    - fridge_service
 
 #  environment:

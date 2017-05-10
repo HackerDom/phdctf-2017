@@ -1,0 +1,72 @@
+---
+
+- name: Ensures /home/user/thermometer dir exists
+  file: path=/home/user/thermometer state=directory
+
+- name: Copy thermometer service from host
+  copy:
+    src: ../services/thermometer/docker-compose.yml
+    dest: /home/user/thermometer/docker-compose.yml
+    owner: user
+    group: user
+
+- shell: docker images
+  register: docker_images
+  changed_when: false
+
+- name: Copy thermometer service docker images
+  copy:
+    src: '../../docker_images/{{ item }}.tgz'
+    dest: '/tmp/{{ item }}.tgz'
+  when: docker_images.stdout.find('thermometer/{{ item }}') == -1
+  with_items:
+    - mqtt-db
+    - mqtt-broker
+    - module
+    - sensor
+
+- name: Unzip thermometer service docker images
+  command: gunzip /tmp/{{ item }}.tgz creates=/tmp/{{ item }}.tar
+  when: docker_images.stdout.find('{{ item }}') == -1
+  with_items:
+    - mqtt-db
+    - mqtt-broker
+    - module
+    - sensor
+
+- name: Install docker-py
+  pip:
+    name: docker-py
+
+- name: Load thermometer service docker image
+  docker_image:
+    name: 'thermometer/{{item}}'
+    load_path: '/tmp/{{ item }}.tar'
+  when: docker_images.stdout.find('{{ item }}') == -1
+  with_items:
+    - mqtt-db
+    - mqtt-broker
+    - module
+    - sensor
+
+- name: Remove docker images archive files
+  file:
+    path: "/tmp/{{ item }}.t*"
+    state: absent
+  with_items:
+    - mqtt-db
+    - mqtt-broker
+    - module
+    - sensor
+
+- name: Copy systemd script
+  copy:
+    src: files/thermometer.service
+    dest: /etc/systemd/system
+
+- name: Enable thermometer service
+  systemd:
+    name: thermometer
+    enabled: yes
+    state: started
+    daemon_reload: yes

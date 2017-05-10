@@ -16,3 +16,8 @@
 
 - name: Install docker
   apt: name=docker-ce state=latest update_cache=yes
+
+- name: Add 'user' to group docker
+  user: name=user
+        groups=docker
+        append=yes
