@@ -1,4 +1,4 @@
-FROM alpine:latest
+FROM alpine:3.4
 
 RUN apk add --no-cache mysql mysql-client bash && rm -rf /var/lib/mysql
 
