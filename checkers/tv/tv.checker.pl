@@ -165,6 +165,7 @@ sub put {
     $_ = _check_http_response($res);
     $log->info('Upload image');
 
+    sleep 2;
     say "$user:$sign:$id";
     return $SERVICE_OK;
 }
