@@ -7,20 +7,17 @@
     owner: user
     group: user
 
-- name: Build containers
+- name: Build fridge containers
   command: /usr/bin/docker-compose -f /home/user/fridge/docker-compose.yml build
 
-#- name: Copy systemd script
-#  copy:
-#    src: files/fridge.service
-#    dest: /etc/systemd/system
+- name: Copy fridge systemd script
+  copy:
+    src: files/fridge.service
+    dest: /etc/systemd/system
 
-#- name: Force systemd to reread configs
-#  systemd: daemon_reload=yes
-#  changed_when: false
-
-#- name: Enable fridge service
-#  systemd:
-#    name: fridge
-#    enabled: yes
-#    state: started
+- name: Enable fridge service
+  systemd:
+    name: fridge
+    enabled: yes
+    state: started
+    daemon_reload: yes
