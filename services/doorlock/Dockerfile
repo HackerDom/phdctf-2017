@@ -34,10 +34,6 @@ COPY docker-wrapper.sh .
 RUN apt-get --no-install-recommends -y install g++ make libldap2-dev
 RUN make
 
-RUN useradd doorlock
-RUN chown -R doorlock.doorlock /app
-USER doorlock
-
 CMD /app/docker-wrapper.sh
 
 EXPOSE 5683/udp
