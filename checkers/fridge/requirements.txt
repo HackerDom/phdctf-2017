@@ -1,2 +1,4 @@
+# Requirements for the checker of the Fridge service (PHDays Online CTF 2017)
+
 requests
 bs4

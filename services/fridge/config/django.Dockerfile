@@ -1,7 +1,9 @@
 FROM ubuntu:latest
 
+MAINTAINER andgein@yandex.ru
+
 RUN apt-get update
-RUN apt-get install -y python3 python3-pip uwsgi uwsgi-plugin-python3
+RUN apt-get install -y python3 python3-pip uwsgi uwsgi-plugin-python3 postgresql-client
 
 # Install application requirements
 ADD ./web/requirements.txt /

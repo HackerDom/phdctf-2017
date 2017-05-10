@@ -1,5 +1,7 @@
 FROM python:3.6
 
+MAINTAINER andgein@yandex.ru
+
 # Install application requirements
 ADD ./api/requirements.txt /
 RUN pip3 install -U pip

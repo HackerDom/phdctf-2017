@@ -28,6 +28,10 @@ python3 /srv/manage.py migrate --fake-initial
 echo "[+] Django setup, executing: createcachetable"
 python3 /srv/manage.py createcachetable
 
+# DON'T RUN IT IN PRODUCTION. SOME EVIL GUYS CAN BRUTEFORCE PASSWORD AND WHO KNOW WHAT HAPPENS...
+echo "[+] [DEBUG] Django setup, executing: add superuser"
+PGPASSWORD=${POSTGRES_PASSWORD} psql -U ${POSTGRES_USER} -h ${POSTGRES_HOST} -c "INSERT INTO auth_user (password, last_login, is_superuser, username, first_name, last_name, email, is_staff, is_active, date_joined) VALUES ('pbkdf2_sha256\$36000\$k36V24q60mNo\$v5og9qcgc2sqkVwGjZDKNK+wcJy60ix8DIt9E8Yg48c=', '1970-01-01 00:00:00.000000', true, 'admin', 'admin', 'admin', 'admin@admin', true, true, '1970-01-01 00:00:00.000000')"
+
 # Django: collectstatic
 #
 echo "[+] Django setup, executing: collectstatic"

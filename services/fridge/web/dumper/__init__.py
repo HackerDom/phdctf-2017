@@ -15,6 +15,8 @@ def dump_model_to_file(model, filename):
         for obj in model.objects.all():
             object_dict = {}
             for column in columns:
+                # Don't worry about newlines (\n and \r): csv.DictWriter will enclose such strings in quotes (")
+                # So I think there is no vulnerability here
                 object_dict[column] = str(getattr(obj, column, ''))
 
             # Dump dictionary for current object

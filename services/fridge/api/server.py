@@ -213,6 +213,7 @@ async def update_models_loop():
             models.update()
         except Exception as e:
             print('Exception while updating models: {}'.format(e))
+            print('It\'s absolutely normal if service is just started and nobody used it')
         await asyncio.sleep(1)
 
 
