@@ -2,13 +2,7 @@ version: '3'
 
 services:
   mqtt-db:
-    image: mqtt-db
-    build:
-      context: mqtt-db
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
+    image: thermometer/mqtt-db
     hostname: mqtt-db
     container_name: mqtt-db
     volumes:
@@ -16,70 +10,38 @@ services:
     ports:
       - "3306"
 
-  mosquitto-auth-plugin:
-    build:
-      context: mosquitto-auth-plugin
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
-    image: mosquitto-auth-plugin
-    container_name: mosquitto-auth-plugin
-    volumes:
-      - mosquitto-auth-plugin:/auth-plugin
-    command: cp /usr/mosquitto-auth-plug/auth-plug.so /auth-plugin
-
   mqtt-broker:
-    build:
-      context: mosquitto
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
-    image: mosquitto
+    image: thermometer/mqtt-broker
     hostname: mqtt-broker
     container_name: mqtt-broker
     depends_on:
       - mqtt-db
     ports:
       - "1883:1883"
-    volumes:
-      - mosquitto-auth-plugin:/auth-plugin:ro
     links:
       - mqtt-db
 
   sensor:
-    image: thermometer-sensor
-    build:
-      context: sensor
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
+    image: thermometer/sensor
     hostname: sensor
-    container_name: sensor
+    container_name: thermometer-sensor
     depends_on:
       - mqtt-broker
     links:
       - mqtt-broker
 
   module:
-    image: thermometer-module
-    build:
-      context: module
-      args:
-        - http_proxy
-        - https_proxy
-        - no_proxy
+    image: thermometer/module
     hostname: module
-    container_name: module
+    container_name: thermometer-module
     depends_on:
       - mqtt-broker
     links:
       - mqtt-broker
     ports:
       - "8888:8888"
+    security_opt:
+      - seccomp=unconfined
 
 volumes:
   mysql-data:
-  mosquitto-auth-plugin:

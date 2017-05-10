@@ -1,0 +1,40 @@
+version: '3'
+
+services:
+  compile-mosquitto-auth-plugin:
+    build:
+      context: mosquitto-auth-plugin
+      args:
+        - http_proxy
+        - https_proxy
+        - no_proxy
+    image: compile-mosquitto-auth-plugin
+    volumes:
+      - ./mosquitto:/output
+    command: cp /usr/mosquitto-auth-plug/auth-plug.so /output
+
+  compile-sensor:
+    image: compile-thermometer-sensor
+    build:
+      context: sensor
+      dockerfile: Dockerfile.compile
+      args:
+        - http_proxy
+        - https_proxy
+        - no_proxy
+    volumes:
+      - ./sensor:/output
+    command: cp /usr/bin/sensor /output
+
+  compile-module:
+    image: compile-thermometer-module
+    build:
+      context: module
+      dockerfile: Dockerfile.compile
+      args:
+        - http_proxy
+        - https_proxy
+        - no_proxy
+    volumes:
+      - ./module:/output
+    command: cp /usr/bin/module /output

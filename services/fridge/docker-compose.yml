@@ -7,6 +7,7 @@ services:
             - ./volumes/db:/var/lib/postgresql/data
         env_file:
             - ./config/environment.env
+        restart: always
     
     fridge-django:
         build:
@@ -21,6 +22,7 @@ services:
             - ./config/environment.env
         expose:
             - "8000"
+        restart: always
     
     fridge-nginx:
         image: nginx
@@ -31,6 +33,7 @@ services:
             - fridge-django
         ports:
             - "8000:80"
+        restart: always
          
     fridge-api:
         build:
@@ -40,3 +43,4 @@ services:
             - ./volumes/dumps:/dumps:ro
         ports:
             - "9595:9595"
+        restart: always
