@@ -1,2 +1,2 @@
 [vuln_image]
-10.16.90.27	ansible_user=user
+192.168.1.88	ansible_user=user

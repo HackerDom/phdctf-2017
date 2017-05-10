@@ -6,6 +6,7 @@
     - curl
     - software-properties-common
     - python2.7
+    - python-pip
 
 - name: Add Docker's official GPG key
   apt_key: keyserver=hkp://keyserver.ubuntu.com:80 id=0EBFCD88
@@ -14,6 +15,4 @@
   apt_repository: repo='deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable' filename='docker.list' state=present update_cache=yes
 
 - name: Install docker
-  apt: name={{ item }} state=latest update_cache=yes
-  with_items:
-    - docker
+  apt: name=docker-ce state=latest update_cache=yes

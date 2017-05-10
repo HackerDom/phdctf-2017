@@ -1,0 +1,9 @@
+---
+
+- hosts: vuln_image
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+
+  tasks:
+  - name: Install packages to allow apt to use a repository over HTTPS
+    apt: name=python2.7 state=latest
