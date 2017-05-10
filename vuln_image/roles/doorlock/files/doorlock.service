@@ -1,0 +1,12 @@
+[Unit]
+Description=Doorlock Service
+Requires=docker.service
+After=docker.service
+
+[Service]
+Restart=always
+ExecStart=/home/user/doorlock/docker-run.sh
+ExecStop=/usr/bin/docker stop doorlock
+
+[Install]
+WantedBy=default.target
