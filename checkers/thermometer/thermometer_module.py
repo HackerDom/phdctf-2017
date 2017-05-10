@@ -44,11 +44,29 @@ class ThermometerModule:
                 return MUMBLE
             return OK
         except requests.exceptions.ConnectionError as e:
-            trace("Connection error", "Connection error at ThermometerModule.index(): %s" % e)
+            trace("Connection error", "Connection error at ThermometerModule.authorize_sensor(): %s" % e)
             return DOWN
         except requests.exceptions.Timeout as e:
-            trace("Timeout", "Timeout at ThermometerModule.index(): %s" % e)
+            trace("Timeout", "Timeout at ThermometerModule.authorize_sensor(): %s" % e)
             return DOWN
         except Exception as e:
             trace("Unknown error", "Unknown request error: %s" % e)
             return CHECKER_ERROR
+
+    def create_mqtt_client(self, username, password):
+        try:
+            r = requests.post(self._base_url + 'clients', data = {'username': username, 'password' : password}, auth=HTTPBasicAuth('admin', 'webrelay'), timeout=3)
+            if r.status_code != 200:
+                trace("Bad HTTP status code", "Bad HTTP status code: %d" % r.status_code)
+                return MUMBLE
+            return OK
+        except requests.exceptions.ConnectionError as e:
+            trace("Connection error", "Connection error at ThermometerModule.create_mqtt_client(): %s" % e)
+            return DOWN
+        except requests.exceptions.Timeout as e:
+            trace("Timeout", "Timeout at ThermometerModule.create_mqtt_client(): %s" % e)
+            return DOWN
+        except Exception as e:
+            trace("Unknown error", "Unknown request error: %s" % e)
+            return CHECKER_ERROR
+

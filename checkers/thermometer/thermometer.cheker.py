@@ -47,9 +47,13 @@ def put(args):
             sys.exit(result)
 
         module_client = ThermometerModule(host)
-        module_client.authorize_sensor(flag_id, flag_data)
+        sys.exit(module_client.authorize_sensor(flag_id, flag_data))
 
-    verdict(OK)   
+    if vuln == "2":
+        module_client = ThermometerModule(host)
+        sys.exit(module_client.create_mqtt_client(username=flag_id, password=flag_data))
+    
+    verdict(CHECKER_ERROR, "Unknown vuln number for put()", "Unknown vuln number '%s' for put" % vuln)
 
 def get(args):
     if len(args) != 4:
@@ -57,11 +61,8 @@ def get(args):
     host, flag_id, flag_data, vuln = args
     trace("get(%s, %s, %s, %s)" % (host, flag_id, flag_data, vuln))
 
-    if vuln == "1":
-        mqtt_client = MqttClient(host)
-        sys.exit(mqtt_client.check_connect(username=flag_id, password=flag_data))
-
-    return verdict(OK)
+    mqtt_client = MqttClient(host)
+    sys.exit(mqtt_client.check_connect(username=flag_id, password=flag_data))
 
 def main(args):
     if len(args) == 0:
