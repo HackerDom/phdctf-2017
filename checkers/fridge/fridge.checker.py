@@ -359,12 +359,12 @@ class FridgeChecker(checklib.http.HttpChecker):
             r = self.try_http_get(self.main_url)
             found = flag in r.text
         elif vuln == 2:
-            logging.info('Sleep 5 seconds before sending request to the web server')
-            time.sleep(5)
+            logging.info('Sleep 6.5 seconds before sending request to the web server')
+            time.sleep(6.5)
             logging.info('Send any request to the web server')
             self.try_http_get(self.main_url)
-            logging.info('Sleep 1 second after sending request to the web server and before API request')
-            time.sleep(1)
+            logging.info('Sleep 2 second after sending request to the web server and before API request')
+            time.sleep(2)
 
             api = FridgeApi(address)
             api.query('LIST', user.username, user.password)
