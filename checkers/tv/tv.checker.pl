@@ -86,7 +86,7 @@ sub check {
 
     $url->path->merge('/');
     my $ok;
-    for ( 1 .. 5 ) {
+    for ( 1 .. 10 ) {
         $log->info("Getting index page #$_...");
         $_ = _check_http_response( $ua->get($url) );
         $log->info('Got index page');
