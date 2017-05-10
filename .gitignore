@@ -49,3 +49,6 @@ ENV/
 
 # Libraries
 *.so
+
+# Archives
+*.tgz
