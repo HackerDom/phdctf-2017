@@ -6,7 +6,9 @@ WORKDIR /app
 
 RUN apt-get update
 
-RUN DEBIAN_FRONTEND=noninteractive apt-get -y install expect libldap-2.4-2 slapd
+RUN apt-get --no-install-recommends -y install apt-utils expect
+
+RUN DEBIAN_FRONTEND=noninteractive apt-get --no-install-recommends -y install slapd libldap-2.4-2
 
 # App sources / build requirements
 COPY Makefile .
@@ -21,7 +23,7 @@ COPY ldap/doorlock.schema /etc/ldap/schema/doorlock.schema
 COPY ldap/slapd.d/cn=config/cn=schema/cn={4}doorlock.ldif /etc/ldap/slapd.d/cn=config/cn=schema/
 RUN chown openldap.openldap /etc/ldap/slapd.d/cn=config/cn=schema/cn={4}doorlock.ldif
 
-RUN apt-get -y install ldap-utils
+RUN apt-get --no-install-recommends -y install ldap-utils
 
 COPY ldap/ldap-init.sh .
 COPY ldap/ldap.cfg .
@@ -29,7 +31,7 @@ COPY ldap/add-locks.ldif .
 
 COPY docker-wrapper.sh .
 
-RUN apt-get -y install g++ make libldap2-dev
+RUN apt-get --no-install-recommends -y install g++ make libldap2-dev
 RUN make
 
 RUN useradd doorlock
