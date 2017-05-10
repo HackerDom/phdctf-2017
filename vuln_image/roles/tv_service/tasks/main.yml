@@ -10,9 +10,9 @@
 - shell: docker images
   register: docker_images
 
-- name: Download tv service docker image
-  get_url:
-    url: https://www.dropbox.com/s/nybl1wrizml36nw/phdays_ctf_tv.tgz?dl=1
+- name: Copy tv service docker image
+  copy:
+    src: ../../docker_images/phdays_ctf_tv.tgz
     dest: /tmp/phdays_ctf_tv.tgz
   when: docker_images.stdout.find('phdays_ctf_tv') == -1
 
@@ -26,6 +26,14 @@
     tag: v2
     load_path: /tmp/phdays_ctf_tv.tar
   when: docker_images.stdout.find('phdays_ctf_tv') == -1
+
+- name: Remove files
+  file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - /tmp/phdays_ctf_tv.tgz
+    - /tmp/phdays_ctf_tv.tar
 
 - name: Copy systemd script
   copy:
