@@ -8,8 +8,6 @@ services:
     restart: always
     volumes:
       - mysql-data:/var/lib/mysql
-    ports:
-      - "3306"
 
   mqtt-broker:
     image: thermometer/mqtt-broker
