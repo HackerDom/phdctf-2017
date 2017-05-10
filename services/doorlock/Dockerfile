@@ -29,11 +29,12 @@ COPY ldap/ldap-init.sh .
 COPY ldap/ldap.cfg .
 COPY ldap/add-locks.ldif .
 
-COPY docker-wrapper.sh .
-
 RUN apt-get --no-install-recommends -y install g++ make libldap2-dev
 RUN make
 
+RUN apt-get --no-install-recommends -y install netcat
+
+COPY docker-wrapper.sh .
 CMD /app/docker-wrapper.sh
 
 EXPOSE 5683/udp
