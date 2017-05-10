@@ -1,13 +1,8 @@
-FROM debian:latest
-RUN apt-get update && apt-get install -y build-essential gcc make libssl-dev uuid-dev && rm -rf /var/lib/apt/lists/*
+FROM alpine:3.4
 
-COPY paho.mqtt.c /usr/src/paho.mqtt.c
-WORKDIR /usr/src/paho.mqtt.c
-RUN make && make install
+RUN apk add --no-cache libuuid libc6-compat bash
 
-COPY src /usr/src/thermometer
-WORKDIR /usr/src/thermometer
-RUN gcc -o /usr/bin/sensor sensor.c -l paho-mqtt3c -luuid -lm
+COPY sensor /usr/bin/
 
 COPY wait-for-it.sh /usr/bin/wait-for-it.sh
 RUN chmod +x /usr/bin/wait-for-it.sh

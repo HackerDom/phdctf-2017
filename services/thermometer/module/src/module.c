@@ -174,33 +174,40 @@ int iterate_post(void *coninfo_cls, enum MHD_ValueKind kind, const char *key,
 void request_completed(void* cls, struct MHD_Connection* connection,
                        void** con_cls, enum MHD_RequestTerminationCode toe)
 {
+    if (NULL == con_cls)
+        return;
+
     struct CONNECTION_HTTP_INFO* con_info = *con_cls;
     if (NULL == con_info)
         return;
 
     if (con_info->connection_type == POST)
     {
-        MHD_destroy_post_processor(con_info->post_processor);
+        if (con_info->post_processor != NULL)
+        {
+            MHD_destroy_post_processor(con_info->post_processor);
+            con_info->post_processor = NULL;
+        }
 
-        if (con_info->sensor_id)
+        if (con_info->sensor_id != NULL)
         {
             free(con_info->sensor_id);
             con_info->sensor_id = NULL;
         }
 
-        if (con_info->auth_token)
+        if (con_info->auth_token != NULL)
         {
             free(con_info->auth_token);
             con_info->auth_token = NULL;
         }
 
-        if (con_info->username)
+        if (con_info->username != NULL)
         {
             free(con_info->username);
             con_info->username = NULL;
         }
 
-        if (con_info->password)
+        if (con_info->password != NULL)
         {
             free(con_info->password);
             con_info->password = NULL;
@@ -278,6 +285,7 @@ int answer_to_connection (void *cls, struct MHD_Connection *connection,
     {
         struct CONNECTION_HTTP_INFO* con_info;
         con_info = malloc (sizeof (struct CONNECTION_HTTP_INFO));
+        memset(con_info, 0, sizeof (struct CONNECTION_HTTP_INFO));
         if (NULL == con_info)
             return MHD_NO;
 
@@ -376,14 +384,14 @@ int process_mqtt_message(void *context, char *topic_name, int topic_len, MQTTCli
 {
     if (strcmp(topic_name, AUTHORIZATION_REQUEST_TOPIC) == 0) 
     {
-        printf("Authorization request for client_id '%s'.\n", message->payload);
+        printf("Authorization request for client_id '%s'.\n", (char *)message->payload);
 
         int i;
         for (i = 0; i < SENSOR_LIST_SIZE; i++)
         {
             if (sensor_list[i] != NULL && strcmp(sensor_list[i], message->payload) == 0)
             {
-                printf("Authorization request for client_id '%s' already exists.\n");
+                printf("Authorization request for client_id '%s' already exists.\n", (char *)message->payload);
                 goto end_processing;
             }
         }

@@ -52,3 +52,6 @@ ENV/
 
 # Archives
 *.tgz
+
+services/thermometer/sensor/sensor
+services/thermometer/module/module
