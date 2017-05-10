@@ -1,0 +1,30 @@
+---
+
+- name: Copy coffeepot service from host
+  copy:
+    src: ../services/coffeepot
+    dest: /home/user/
+    owner: user
+    group: user
+
+- name: Build coffeepot data container
+  command: /home/user/coffeepot/build_coffeepot_data.sh
+
+- name: Build coffeepot service container
+  command: /home/user/coffeepot/build_coffeepot_service.sh
+
+
+#- name: Copy systemd script
+#  copy:
+#    src: files/fridge.service
+#    dest: /etc/systemd/system
+
+#- name: Force systemd to reread configs
+#  systemd: daemon_reload=yes
+#  changed_when: false
+
+#- name: Enable fridge service
+#  systemd:
+#    name: fridge
+#    enabled: yes
+#    state: started

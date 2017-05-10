@@ -1,0 +1,12 @@
+[Unit]
+Description=Coffeepot Service
+Requires=docker.service
+After=docker.service
+
+[Service]
+Restart=always
+ExecStart=/home/user/coffeepot/start_coffeepot_service.sh
+ExecStop=/home/user/coffeepot/stop_coffeepot_service.sh
+
+[Install]
+WantedBy=default.target
