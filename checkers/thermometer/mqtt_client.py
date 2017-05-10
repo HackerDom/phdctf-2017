@@ -15,8 +15,6 @@ def trace(public="", private=""):
     if private:
         print(private, file=sys.stderr)
 
-
-
 class MqttClient:
     def __init__(self, host):
         self._broker_host = host
@@ -55,6 +53,32 @@ class MqttClient:
                 trace("Timeout", "Timeout at MqttClient.check_connect()")
             return self._check_result
 
+        except Exception as e:
+            trace("Unknown error", "Unknown request error: %s" % e)
+            return CHECKER_ERROR
+
+    def register_sensor(self, sensor_id):
+        try:
+            signal.signal(signal.SIGALRM, self.handle_timeout)
+            signal.alarm(4)
+
+            try:
+                self._mqtt_client.reinitialise(client_id=sensor_id, clean_session=True)
+
+                self._mqtt_client.connect(self._broker_host, 1883, keepalive=10)
+                (ret, mid) = self._mqtt_client.publish("house/authorization", sensor_id)
+
+                self._mqtt_client.disconnect()
+
+                if ret == 0:
+                    return OK
+                trace("Publish error", "Publish error: %s" % ret)
+                return MUMBLE
+            except TimeoutError:
+                return DOWN
+            except Exception as e:
+                trace("Connection error", "Connection error: %s" % e)
+                return DOWN
         except Exception as e:
             trace("Unknown error", "Unknown request error: %s" % e)
             return CHECKER_ERROR

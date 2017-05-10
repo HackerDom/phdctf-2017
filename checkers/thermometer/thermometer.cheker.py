@@ -34,6 +34,18 @@ def check(args):
     mqtt_client = MqttClient(host)
     sys.exit(mqtt_client.check_connect())
 
+def put(args):
+    if len(args) != 4:
+        verdict(CHECKER_ERROR, "Wrong args count", "Wrong args count for put()")
+    host, flag_id, flag_data, vuln = args
+    trace("put(%s, %s, %s, %s)" % (host, flag_id, flag_data, vuln))
+
+    if vuln == "1":
+        mqtt_client = MqttClient(host)
+        mqtt_client.register_sensor(flag_id)
+
+    verdict(OK)   
+
 def main(args):
     if len(args) == 0:
         verdict(CHECKER_ERROR, "No args")
