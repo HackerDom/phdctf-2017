@@ -4,7 +4,7 @@ services:
   doorlock:
     image: doorlock
     container_name: doorlock
-    restart: always
+    restart: on-failure
     volumes:
       - ldap:/var/lib/ldap
     ports:
