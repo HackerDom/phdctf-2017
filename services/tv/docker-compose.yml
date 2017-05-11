@@ -4,8 +4,10 @@ services:
   tv:
     image: phdays_ctf_tv:v2
     container_name: phdays_ctf_tv
+    working_dir: /opt/tv
     restart: always
     ports:
       - "8080:8080"
     volumes:
       - .:/opt/tv
+    command: bash start.sh
