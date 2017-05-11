@@ -1,0 +1,14 @@
+version: '3'
+
+services:
+  doorlock:
+    image: doorlock
+    container_name: doorlock
+    restart: always
+    volumes:
+      - ldap:/var/lib/ldap
+    ports:
+      - "5683:5683/udp"
+
+volumes:
+  ldap:
