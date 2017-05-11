@@ -1,0 +1,15 @@
+version: '3'
+
+services:
+  coffeepot:
+    build: coffeepot_service
+    volumes:
+      - coffeepot-data:/home/coffeepot/pots
+    hostname: coffeepot
+    container_name: coffeepot-service
+    restart: on-failure
+    ports:
+      - "3255:3255"
+
+volumes:
+  coffeepot-data:
