@@ -5,8 +5,8 @@ After=docker.service
 
 [Service]
 Restart=always
-ExecStart=/usr/bin/docker run --rm -p 8080:8080 -v /home/user/tv:/opt/tv -w /opt/tv --name phdays_ctf_tv phdays_ctf_tv:v2 bash start.sh
-ExecStop=/usr/bin/docker stop -t 2 phdays_ctf_tv
+ExecStart=/usr/bin/docker-compose -f /home/user/tv/docker-compose.yml up
+ExecStop=/usr/bin/docker-compose -f /home/user/tv/docker-compose.yml down
 
 [Install]
 WantedBy=default.target

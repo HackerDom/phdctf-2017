@@ -1,0 +1,11 @@
+version: '3'
+
+services:
+  tv:
+    image: phdays_ctf_tv:v2
+    container_name: phdays_ctf_tv
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/opt/tv
