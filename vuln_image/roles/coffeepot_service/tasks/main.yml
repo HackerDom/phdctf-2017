@@ -2,7 +2,7 @@
 
 - name: Copy coffeepot service from host
   copy:
-    src: ../deploy/coffeepot
+    src: ../services/coffeepot
     dest: /home/user/
     owner: user
     group: user
