@@ -4,8 +4,11 @@
 
   roles:
     - thermometer_service
-#    - tv_service
+    - doorlock_service
+    - tv_service
+    - coffeepot_service
 #    - fridge_service
+
 
 #  environment:
 #    http_proxy: http://xz.avp.ru:8080
