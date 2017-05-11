@@ -3,12 +3,12 @@
 - name: Copy coffeepot service from host
   copy:
     src: ../services/coffeepot
-    dest: /home/user/
-    owner: user
-    group: user
+    dest: /home/ctf/
+    owner: ctf
+    group: ctf
 
 - name: Build coffeepot containers
-  command: /usr/bin/docker-compose -f /home/user/coffeepot/docker-compose.yml build
+  command: /usr/bin/docker-compose -f /home/ctf/coffeepot/docker-compose.yml build
 
 - name: Copy systemd script
   copy:

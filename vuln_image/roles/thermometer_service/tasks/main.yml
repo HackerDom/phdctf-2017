@@ -1,14 +1,14 @@
 ---
 
-- name: Ensures /home/user/thermometer dir exists
-  file: path=/home/user/thermometer state=directory
+- name: Ensures /home/ctf/thermometer dir exists
+  file: path=/home/ctf/thermometer state=directory
 
 - name: Copy thermometer service from host
   copy:
     src: ../services/thermometer/docker-compose.yml
-    dest: /home/user/thermometer/docker-compose.yml
-    owner: user
-    group: user
+    dest: /home/ctf/thermometer/docker-compose.yml
+    owner: ctf
+    group: ctf
 
 - shell: docker images
   register: docker_images

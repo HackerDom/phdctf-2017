@@ -3,12 +3,12 @@
 - name: Copy fridge service from host
   copy:
     src: ../services/fridge
-    dest: /home/user/
-    owner: user
-    group: user
+    dest: /home/ctf/
+    owner: ctf
+    group: ctf
 
 - name: Build fridge containers
-  command: /usr/bin/docker-compose -f /home/user/fridge/docker-compose.yml build
+  command: /usr/bin/docker-compose -f /home/ctf/fridge/docker-compose.yml build
 
 - name: Copy fridge systemd script
   copy:

@@ -1,14 +1,14 @@
 ---
 
-- name: Ensures /home/user/doorlock dir exists
-  file: path=/home/user/doorlock state=directory
+- name: Ensures /home/ctf/doorlock dir exists
+  file: path=/home/ctf/doorlock state=directory
 
 - name: Copy doorlock service from host
   copy:
     src: ../services/doorlock/docker-compose.yml
-    dest: /home/user/doorlock/docker-compose.yml
-    owner: user
-    group: user
+    dest: /home/ctf/doorlock/docker-compose.yml
+    owner: ctf
+    group: ctf
 
 - shell: docker images
   register: docker_images
