@@ -3,9 +3,9 @@ version: '3'
 services:
   tv:
     image: phdays_ctf_tv:v2
-    container_name: phdays_ctf_tv
+    container_name: tv
     working_dir: /opt/tv
-    restart: always
+    restart: on-failure
     ports:
       - "8080:8080"
     volumes:
