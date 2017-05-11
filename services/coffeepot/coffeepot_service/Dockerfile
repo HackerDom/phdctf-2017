@@ -5,6 +5,7 @@ RUN useradd coffeepot
 
 ADD coffeepot /home/coffeepot
 RUN chown -R coffeepot:coffeepot /home/coffeepot/pots
+RUN chmod +x /home/coffeepot/coffee_httpd
 RUN chmod +x /home/coffeepot/coffeepot.cgi
 RUN chmod -R +r /home/coffeepot
 
