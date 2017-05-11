@@ -7,7 +7,7 @@
     - doorlock_service
     - tv_service
     - coffeepot_service
-#    - fridge_service
+    - fridge_service
 
 
 #  environment:
