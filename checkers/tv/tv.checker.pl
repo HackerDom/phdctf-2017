@@ -148,6 +148,8 @@ sub put {
     $_ = _check_http_response( $ua->get($url) );
     my ($user_cookie) = grep { $_->name eq 'user' } @{ $ua->cookie_jar->all };
     my ($sign_cookie) = grep { $_->name eq 'sign' } @{ $ua->cookie_jar->all };
+    _mumble "Invalid cookie" unless $user_cookie && $sign_cookie;
+
     my $user = $user_cookie->value;
     my $sign = $sign_cookie->value;
     $log->info("Created user: '$user'");
