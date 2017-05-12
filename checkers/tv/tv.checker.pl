@@ -18,6 +18,7 @@ my ( $mode, $ip ) = splice @ARGV, 0, 2;
 my @chars = ( 'A' .. 'Z', 'a' .. 'z', '_', '0' .. '9' );
 
 my $agent = c(<DATA>)->shuffle->first;
+chomp $agent;
 
 my $ua  = Mojo::UserAgent->new( max_redirects => 3 );
 $ua->transactor->name($agent);
@@ -63,6 +64,8 @@ sub check {
     $url->path->merge('/create');
     $_ = _check_http_response( $ua->get($url) );
     my ($cookie) = grep { $_->name eq 'user' } @{ $ua->cookie_jar->all };
+    _mumble "Invalid cookie" unless $cookie;
+
     my $user = $cookie->value;
     $log->info("Created user: '$user'");
     _mumble "Invalid main page" unless $_->text =~ /Upload new photo/;

@@ -2,8 +2,6 @@
 
 import paho.mqtt.client as mqtt
 import sys
-from thermometer_module import ThermometerModule
-from mqtt_client import MqttClient
 
 def on_connect(client, userdata, flags, rc):
     print("Connected to MQTT broker.")
