@@ -121,7 +121,10 @@ root@phdays2017:~# strings libcoap-1.a
 
 Видим подозрительные строки, наталкивающие нас на мысль о бэкдоре:
 
-commit 012a1a1482e30de1dda7d142de27de91d23c4501Merge: b425b15 f122811Author: Krait <krait@dqteam.org>Date:   Wed May 3 14:45:52 2017 +0500    Merge branch 'backdoor'
+commit 012a1a1482e30de1dda7d142de27de91d23c4501Merge: b425b15 f122811
+Author: Krait <krait@dqteam.org>
+Date:   Wed May 3 14:45:52 2017 +0500
+Merge branch 'backdoor'
 
 /home/dima/git/phdctf-2017/services/doorlock/backdoor/libcoap
 
@@ -136,5 +139,48 @@ root@phdays2017:~/libcoap# git checkout b425b15
 root@phdays2017:~/libcoap# apt-get -y install libtool autoconf pkgconf
 root@phdays2017:~/libcoap# ./autogen.sh && ./configure --disable-examples && make
 
-    [ TO BE CONTINUED ... ]
+Сравним файлы libcoap-1.a: только что собранный и из каталога сервиса.
+Воспользуемся командой: objdump -M intel -d libcoap-1.a
+Обернем ее в простой скрипт для сравнения функций (./objd-lines.pl)
+
+# ./objd-lines.pl .libs/libcoap-1.a ../app/libs/libcoap-1.a 
+                  write_option   orig: 140   mod: 134   diff:-6
+               coap_retransmit   orig:  82   mod:  79   diff:-3
+    print_readable.constprop.1   orig:  87   mod:  85   diff:-2
+          coap_write_block_opt   orig: 125   mod: 123   diff:-2
+                   no_response   orig:  70   mod:  69   diff:-1
+          coap_print_wellknown   orig: 256   mod: 257   diff: 1
+                 coap_add_data   orig:  68   mod:  69   diff: 1
+                coap_add_block   orig:  19   mod:  21   diff: 2
+               coap_print_link   orig: 208   mod: 211   diff: 3
+                coap_pdu_parse   orig: 178   mod: 181   diff: 3
+         coap_add_option_later   orig:  63   mod:  67   diff: 4
+               coap_add_option   orig:  55   mod:  60   diff: 5
+       coap_wellknown_response   orig: 292   mod: 299   diff: 7
+                  hash_segment   orig:   4   mod:  11   diff: 7
+             coap_network_send   orig: 130   mod: 170   diff:40
+
+Функция coap_network_send увеличилась больше всех - на 40 опкодов.
+Посмотрим на дизассемблированный код этой функции внимательнее.
+
+Добавилось два блока.
+
+В первом блоке происходит копирование отправляемого пакета целиком в буфер.
+
+Во втором блоке идет поиск в отправляемом пакете сигнатуры 'LITLGIRL':
+
+ 496:	48 be 4c 49 54 4c 47 	movabs rsi,0x4c5249474c54494c
+
+# python3 -c "print(bytearray.fromhex('4c5249474c54494c'))"
+bytearray(b'LRIGLTIL')
+
+Если сигнатура найдена, отправляется содержимое сохраненного ранее буфера.
+
+Бэкдор используется следующим образом:
+1. Сохраняем в сервис флаг, начинающийся на 'LITLGIRL', например:
+ LITLGIRLJTINJEKCADGGJBWDEIOVCMX=
+2. Получаем этот флаг. В ответ придет не наш флаг, а флаг другого пользователя,
+ поставленный последним.
+
+Эксплоиты находятся в каталоге 'sploits/doorlock/'
 
