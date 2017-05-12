@@ -12,7 +12,7 @@ As written on the [mosquitto.org](https://mosquitto.org/):
 
 It supports client authentication (users + passwords) and authorization (acls). To store authentication and authorization information in MySQL Mosquitto uses [mosquitto-auth-plug](https://github.com/jpmens/mosquitto-auth-plug) authentication plugin. This information is stored in the `mqtt.users` and `mqtt.acls` tables.
 
-`thermometer/mqtt-broker` docker image exposes 1883 tcp port outside. Sensor uses broker to send temperature data. Client use broker to read data from sensors.
+`thermometer/mqtt-broker` docker image exposes 1883 tcp port outside. Sensor uses broker to send temperature data, client - to read data from sensors.
 
 ### MySQL
 
@@ -41,7 +41,7 @@ Module exposes HTTP port 8888 outside.
 ### Read sensor authentication info
 
 Thermometer module authorises sensor via MQTT: it sends MQTT password to topic `house/authorization/<sensor_mqtt_client_id>`.
-To disallow anonymous users to read other sensor password there is an acl rule in `mqtt.acls` table:
+To disallow to read other sensor password (flag) there is an acl rule in `mqtt.acls` table:
 
 ```
 +----+--------------------+------------------------+----+
