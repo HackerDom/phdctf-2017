@@ -25,7 +25,7 @@ def verdict(exit_code, public="", private=""):
 def random_str(size, chars):
     return ''.join(random.choice(chars) for _ in range(size))
 
-def do_async(task, timeout=3):
+def do_async(task, timeout=15):
     time_limited_task = asyncio.wait_for(task, timeout)
     return asyncio.get_event_loop().run_until_complete(time_limited_task)
 
