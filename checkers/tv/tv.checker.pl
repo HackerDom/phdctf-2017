@@ -64,6 +64,8 @@ sub check {
     $url->path->merge('/create');
     $_ = _check_http_response( $ua->get($url) );
     my ($cookie) = grep { $_->name eq 'user' } @{ $ua->cookie_jar->all };
+    _mumble "Invalid cookie" unless $cookie;
+
     my $user = $cookie->value;
     $log->info("Created user: '$user'");
     _mumble "Invalid main page" unless $_->text =~ /Upload new photo/;
