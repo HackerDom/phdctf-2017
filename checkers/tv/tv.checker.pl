@@ -18,6 +18,7 @@ my ( $mode, $ip ) = splice @ARGV, 0, 2;
 my @chars = ( 'A' .. 'Z', 'a' .. 'z', '_', '0' .. '9' );
 
 my $agent = c(<DATA>)->shuffle->first;
+chomp $agent;
 
 my $ua  = Mojo::UserAgent->new( max_redirects => 3 );
 $ua->transactor->name($agent);
