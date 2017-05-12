@@ -7,7 +7,8 @@ services:
             - ./volumes/db:/var/lib/postgresql/data
         env_file:
             - ./config/environment.env
-        restart: always
+        restart: on-failure
+        container_name: fridge-db
     
     fridge-django:
         build:
@@ -22,7 +23,8 @@ services:
             - ./config/environment.env
         expose:
             - "8000"
-        restart: always
+        restart: on-failure
+        container_name: fridge-django
     
     fridge-nginx:
         image: nginx
@@ -33,7 +35,8 @@ services:
             - fridge-django
         ports:
             - "8000:80"
-        restart: always
+        restart: on-failure
+        container_name: fridge-nginx
          
     fridge-api:
         build:
@@ -43,4 +46,6 @@ services:
             - ./volumes/dumps:/dumps:ro
         ports:
             - "9595:9595"
-        restart: always
+        restart: on-failure
+        container_name: fridge-api
+

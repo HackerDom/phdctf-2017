@@ -3,12 +3,13 @@
 - name: Copy tv service from host
   copy:
     src: ../services/tv
-    dest: /home/user/
-    owner: user
-    group: user
+    dest: /home/ctf/
+    owner: ctf
+    group: ctf
 
 - shell: docker images
   register: docker_images
+  changed_when: false
 
 - name: Copy tv service docker image
   copy:
@@ -40,12 +41,9 @@
     src: files/tv.service
     dest: /etc/systemd/system
 
-- name: Force systemd to reread configs
-  systemd: daemon_reload=yes
-  changed_when: false
-
 - name: Enable tv service
   systemd:
     name: tv
     enabled: yes
     state: started
+    daemon_reload: yes

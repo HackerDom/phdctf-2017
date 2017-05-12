@@ -1,0 +1,23 @@
+---
+
+- name: Copy coffeepot service from host
+  copy:
+    src: ../services/coffeepot
+    dest: /home/ctf/
+    owner: ctf
+    group: ctf
+
+- name: Build coffeepot containers
+  command: /usr/bin/docker-compose -f /home/ctf/coffeepot/docker-compose.yml build
+
+- name: Copy systemd script
+  copy:
+    src: files/coffeepot.service
+    dest: /etc/systemd/system
+
+- name: Enable coffeepot service
+  systemd:
+    name: coffeepot
+    enabled: yes
+    state: started
+    daemon_reload: yes

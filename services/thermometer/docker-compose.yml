@@ -5,17 +5,15 @@ services:
     image: thermometer/mqtt-db
     hostname: mqtt-db
     container_name: mqtt-db
-    restart: always
+    restart: on-failure
     volumes:
       - mysql-data:/var/lib/mysql
-    ports:
-      - "3306"
 
   mqtt-broker:
     image: thermometer/mqtt-broker
     hostname: mqtt-broker
     container_name: mqtt-broker
-    restart: always
+    restart: on-failure
     depends_on:
       - mqtt-db
     ports:
@@ -27,7 +25,7 @@ services:
     image: thermometer/sensor
     hostname: sensor
     container_name: thermometer-sensor
-    restart: always
+    restart: on-failure
     depends_on:
       - mqtt-broker
     links:
@@ -37,7 +35,7 @@ services:
     image: thermometer/module
     hostname: module
     container_name: thermometer-module
-    restart: always
+    restart: on-failure
     depends_on:
       - mqtt-broker
     links:

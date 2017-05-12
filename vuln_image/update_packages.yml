@@ -1,0 +1,14 @@
+---
+
+- hosts: vuln_image
+#  vars:
+#    ansible_python_interpreter: /usr/bin/python3
+
+  tasks:
+  - name: Install aptitude
+    apt:
+      name: aptitude
+      state: present
+
+  - name: Update packages
+    apt: upgrade=yes update_cache=yes

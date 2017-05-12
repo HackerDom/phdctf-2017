@@ -1,0 +1,52 @@
+---
+
+- name: Ensures /home/ctf/doorlock dir exists
+  file: path=/home/ctf/doorlock state=directory
+
+- name: Copy doorlock service from host
+  copy:
+    src: ../services/doorlock/docker-compose.yml
+    dest: /home/ctf/doorlock/docker-compose.yml
+    owner: ctf
+    group: ctf
+
+- shell: docker images
+  register: docker_images
+  changed_when: false
+
+- name: Copy doorlock service docker images
+  copy:
+    src: ../../docker_images/doorlock.tgz
+    dest: /tmp/doorlock.tgz
+  when: docker_images.stdout.find('doorlock') == -1
+
+- name: Unzip doorlock service docker images
+  command: gunzip /tmp/doorlock.tgz creates=/tmp/doorlock.tar
+  when: docker_images.stdout.find('doorlock') == -1
+
+- name: Install docker-py
+  pip:
+    name: docker-py
+
+- name: Load doorlock service docker image
+  docker_image:
+    name: doorlock
+    load_path: /tmp/doorlock.tar
+  when: docker_images.stdout.find('doorlock') == -1
+
+- name: Remove docker images archive files
+  file:
+    path: "/tmp/doorlock.t*"
+    state: absent
+
+- name: Copy systemd script
+  copy:
+    src: files/doorlock.service
+    dest: /etc/systemd/system
+
+- name: Enable doorlock service
+  systemd:
+    name: doorlock
+    enabled: yes
+    state: started
+    daemon_reload: yes

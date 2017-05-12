@@ -1,2 +1,2 @@
 [vuln_image]
-192.168.1.88	ansible_user=user
+192.168.250.32	ansible_user=ctf

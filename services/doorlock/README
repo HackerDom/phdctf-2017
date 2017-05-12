@@ -3,7 +3,7 @@ COPY NEEDED FILES TO VIULNBOX:
     ./copy-vulnbox-files.sh DIR
 
     If DIR does not exist, it will be created.
-    Example: ./copy-vulnbox-files.sh /mnt/vulnbox/home/user/doorlock/
+    Example: ./copy-vulnbox-files.sh /mnt/vulnbox/home/ctf/doorlock/
 
 BUILD DOCKER CONTAINER:
 
