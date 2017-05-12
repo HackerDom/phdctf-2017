@@ -1,0 +1,140 @@
+=== Общее описание
+
+Сервис представляет собой контроллер "умных замков". Обрабатывает запросы по
+протоколу COAP на порту 5683/udp. Протокол COAP похож на HTTP, только бинарный 
+и через UDP :) В сервисе можно регистрировать замки и "прописывать"
+в эти замки карточки доступа. При регистрации нового замка сервис генерирует
+случайный идентификатор. Для добавления карточки нужно указать Id замка и Tag
+карточки. Tag карточки является флагом. Данные хранятся в базе данных LDAP.
+
+Запросы к сервису удобно выполнять из командной строки клиентом на nodejs:
+
+$ sudo apt install nodejs npm
+$ sudo npm install coap-cli -g
+$ coap get "coap://10.60.123.2/get_card?lock=QWERTY&card=123456"
+(2.05)	EMPTY
+
+=== Исследование
+
+В каталоге сервиса (/home/ctf/doorlock) видим единственный файл docker-compose.yml.
+Ни исходников, ни исполняемых файлов сервиса здесь нет.
+
+Заглянем в запущенный docker-контейнер:
+
+root@phdays2017:~# docker exec -i -u root -t doorlock /bin/bash
+
+root@7119bb47044d:/app# ps axf
+  PID TTY      STAT   TIME COMMAND
+   42 ?        Ss     0:00 /bin/bash
+   72 ?        R+     0:00  \_ ps axf
+    1 ?        Ss     0:00 /bin/sh -c /app/docker-wrapper.sh
+    5 ?        S      0:00 /bin/bash /app/docker-wrapper.sh
+    6 ?        Sl     0:00  \_ /usr/sbin/slapd -h ldap://127.0.0.1:389/ ...
+   32 ?        S      0:00  \_ /app/doorlock-server
+
+Видим два главных процесса: slapd (LDAP сервер) и doorlock-server (сервис)
+
+В каталоге /app есть исходный код сервиса (doorlock-server.cpp):
+
+root@7119bb47044d:/app# ls
+Makefile        docker-wrapper.sh  doorlock-server.cpp  doorlock-server.o  ldap-dpkg-reconfigure.sh 
+ldap.cfg        add-locks.ldif     doorlock-server      doorlock-server.d  include
+ldap-init.sh    libs
+
+Скопируем каталог /app из контейнера на игровой образ для изучения:
+
+root@phdays2017:~# docker cp doorlock:/app app
+
+=== Уязвимость 1
+
+Посмотрим doorlock-server.cpp. Функция init_resources регистрирует обработчики 
+COAP-запросов. Сервис отвечает на запросы:
+
+GET  /              без параметров
+
+Всегда отвечает одинаковой строкий. Не содержит работы с LDAP - нам не интересен.
+
+POST /register_lock с параметрами model, floor, room
+
+Создает в LDAP объект "замок" (lockObject) структуры:
+
+    objectClass: top
+    objectClass: device
+    objectClass: lockObject
+    lockModel:   [параметр model запроса]
+    lockFloor:   [параметр floor запроса]
+    lockRoom:    [параметр room запроса]
+    timestamp:   199412161032Z
+
+Объект создается с DN: cn=[lock_id],cn=locks,dc=iot,dc=phdays,dc=com
+(DN в LDAP уникально описывает объект в дереве объектов)
+[lock_id] - случайная строка из 9 символов, генерируемая сервисом
+
+POST /add_card      с параметрами lock, card, tag
+
+Создает в LDAP объект "карта доступа" (cardObject) следующей структуры:
+
+    objectClass: top
+    objectClass: device
+    objectClass: cardObject
+    lockId:      [параметр lock запроса]
+    card:        [параметр card запроса]
+    cardTag:     [параметр tag запроса]
+    cardOwner:   John Doe
+    timestamp:   199412161032Z
+
+Объект создается с DN: cn=[card],cn=[lock],cn=locks,dc=iot,dc=phdays,dc=com
+
+GET  /get_card      с параметрами lock, card
+
+Делает запрос к LDAP на чтение. Запрос строится так:
+
+sprintf( query, "(&(cn=%s)(lockId=%s))", card, lock )
+
+Синтаксис "(&(FOO)(BAR))" означает одновременное выполнение условий FOO и BAR.
+
+После построения запроса он прогоняется через функции:
+1. ldap_sanitize() - делает две вещи
+а) заменяет "опасные" символы (*,~,\,|) на _ 
+б) ставит нулевой символ после последней закрывающей скобки
+2. ldap_validate() - проверяет что в строке ровно 3 открывающих и ровно 3 закрывающих скобки
+
+В этих функциях кроется первая уязвимость: если передать вместо card строку вида
+"N)(%26))", это приведет к формированию запроса "(&(cn=X)(&))".
+"(&)" всегда является истиной. Таким образом, остаточно знать card_id, чтобы узнать
+ее секретный tag (флаг).
+
+Заметим, что в сервисе регистрируются карты с идентификаторами двух видов:
+1. secur???????? (где ? - любой символ) - таких 80%
+2. N (где N - натуральное число, по возрастанию, начиная с 1) - таких 20%
+
+Первая уязвимость позволяет отправкой запросов /get_card с параметром card: 
+"1)(%26))", "2)(%26))", "3)(%26))", "4)(%26))", ... получить 20% флагов.
+Параметр lock при этом может быть любым - он будет проигнорирован.
+
+=== Уязвимость 2
+
+Сервис использует реализацию протокола COAP в библиотеке libcoap, которая лежит
+в каталоге libs. Посмотрим, какие в ней есть строки:
+
+root@phdays2017:~# strings libcoap-1.a
+
+Видим подозрительные строки, наталкивающие нас на мысль о бэкдоре:
+
+commit 012a1a1482e30de1dda7d142de27de91d23c4501Merge: b425b15 f122811Author: Krait <krait@dqteam.org>Date:   Wed May 3 14:45:52 2017 +0500    Merge branch 'backdoor'
+
+/home/dima/git/phdctf-2017/services/doorlock/backdoor/libcoap
+
+В первой строке есть хэш коммита b425b15, погуглив его находим репозиторий
+https://github.com/obgm/libcoap
+
+Клонируем себе, переключаемся на коммит b425b15 и собираем:
+
+root@phdays2017:~# git clone https://github.com/obgm/libcoap.git
+root@phdays2017:~# cd libcoap/
+root@phdays2017:~/libcoap# git checkout b425b15
+root@phdays2017:~/libcoap# apt-get -y install libtool autoconf pkgconf
+root@phdays2017:~/libcoap# ./autogen.sh && ./configure --disable-examples && make
+
+    [ TO BE CONTINUED ... ]
+
