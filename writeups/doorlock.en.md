@@ -49,7 +49,7 @@ Let's copy /app directory from docker-container to vulnimage for further researc
 ```
 root@phdays2017:~# docker cp doorlock:/app app
 ```
-## Vuln 1 (simple)
+## Vulnerability 1 (simple)
 
 Let's look at doorlock-server.cpp. init_resources function registers handlers for 
 COAP-requests. Service responds to the following requests:
@@ -115,16 +115,16 @@ This vulnerability allows by issuing `/get_card` requests with card arguments:
 "1)(%26))", "2)(%26))", "3)(%26))", "4)(%26))", ... obtain 20% of flags.
 lock parameter can be arbitrary - it will be ignored.
 
-## Vuln 1 (hard)
+## Vulnerability 2 (hard)
 
-Сервис использует реализацию протокола COAP в библиотеке libcoap, которая лежит
-в каталоге libs. Посмотрим, какие в ней есть строки:
+The service uses libcoap C library which implements COAP protocol. Its binary is located in directory 'libs'.
+Let's first look at strings in this binary:
 
 ```
 root@phdays2017:~# strings libcoap-1.a
 ```
 
-Видим подозрительные строки, наталкивающие нас на мысль о бэкдоре:
+We can see suspicious strings which make us think about backdoor:
 
 ```
 commit 012a1a1482e30de1dda7d142de27de91d23c4501Merge: b425b15 f122811
@@ -135,9 +135,10 @@ Merge branch 'backdoor'
 ```
 /home/dima/git/phdctf-2017/services/doorlock/backdoor/libcoap
 ```
-В первой строке есть хэш коммита b425b15, погуглив его находим репозиторий https://github.com/obgm/libcoap
+In one of suspicious strings there is commit hash (b425b15).
+After googling it, we can easily find repo https://github.com/obgm/libcoap
 
-Клонируем себе, переключаемся на коммит b425b15 и собираем:
+Let's clone it, checkout to commit b425b15 and make binary:
 
 ```
 root@phdays2017:~# git clone https://github.com/obgm/libcoap.git
@@ -146,9 +147,9 @@ root@phdays2017:~/libcoap# git checkout b425b15
 root@phdays2017:~/libcoap# apt-get -y install libtool autoconf pkgconf
 root@phdays2017:~/libcoap# ./autogen.sh && ./configure --disable-examples && make
 ```
-Сравним файлы `libcoap-1.a`: только что собранный и из каталога сервиса.
-Воспользуемся командой: `objdump -M intel -d libcoap-1.a`
-Обернем ее в простой скрипт для сравнения функций (./objd-lines.pl)
+Compare `libcoap-1.a` files: just built from sources and from service directory.
+We'll use command: `objdump -M intel -d libcoap-1.a`
+Let's wrap it in a simple script to compare functions (./objd-lines.pl)
 
 ```
 #!/usr/bin/perl
@@ -199,15 +200,16 @@ for (sort {$a->[1] <=> $b->[1]} map { [$_, $M{$_}-$O{$_} ] } keys %M) {
        coap_wellknown_response   orig: 292   mod: 299   diff: 7
                   hash_segment   orig:   4   mod:  11   diff: 7
              coap_network_send   orig: 130   mod: 170   diff:40
-```
-Функция `coap_network_send` увеличилась больше всех - на 40 опкодов.
-Посмотрим на дизассемблированный код этой функции внимательнее.
+``` 
 
-Добавилось два блока.
+`coap_network_send` function was increased more than others - diff is 40 opcodes.
+Look at the disassembly.
 
-В первом блоке происходит копирование отправляемого пакета целиком в буфер.
+Two blocks were added.
 
-Во втором блоке идет поиск в отправляемом пакете сигнатуры 'LITLGIRL':
+In the first block whole sending buffer is being copied to a separate buffer.
+
+In the second block there is check for signature 'LITLGIRL' inside sending packet:
 ```
  496:	48 be 4c 49 54 4c 47 	movabs rsi,0x4c5249474c54494c
 ```
@@ -215,11 +217,11 @@ for (sort {$a->[1] <=> $b->[1]} map { [$_, $M{$_}-$O{$_} ] } keys %M) {
 # python3 -c "print(bytearray.fromhex('4c5249474c54494c'))"
 bytearray(b'LRIGLTIL')
 ```
-Если сигнатура найдена, отправляется содержимое сохраненного ранее буфера.
+If the signature was found, that separate buffer (stored before) is sent as a reply.
 
-Бэкдор используется следующим образом:
-* Сохраняем в сервис флаг, начинающийся на 'LITLGIRL', например: `LITLGIRLJTINJEKCADGGJBWDEIOVCMX=`
-* Получаем этот флаг. В ответ придет не наш флаг, а флаг другого пользователя, поставленный последним.
+Backdoor can be used in the following way:
+* Put a flag (card's tag), to the service wich starts with 'LITLGIRL', e.g.: `LITLGIRLJTINJEKCADGGJBWDEIOVCMX=`
+* Get that flag. We'll get some other (last) flag in response (not ours).
 
-Эксплоиты находятся в каталоге 'sploits/doorlock/'
+Exploits are in 'sploits/doorlock/' directory.
 
