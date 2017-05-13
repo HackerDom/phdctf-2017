@@ -1,6 +1,6 @@
 # PHDays CTF 2017
 
-PHDays CTF is an online international challenge in the information security. Developer by Hackerdom team for PHDays forum.
+PHDays CTF2017  is an online international challenge in the information security. Developed by Hackerdom team for [PHDays VII](https://phdays.com) forum.
 
 The contest is driven by classic rules (Attack-Defense [CTF](https://en.wikipedia.org/wiki/Capture_the_flag#Computer_security))
 Each team is given a set of vulnerable services.
@@ -11,10 +11,10 @@ PHDays CTF 2017 was held on May 12, 2017.
 
 This repository contains:
 
-* source of all services in folder [services](https://github.com/HackerDom/phdctf-2017/tree/master/services/)
-* checkers for [checksystem](https://github.com/Hackerdom/checksystem) in folder [checkers](checkers/)
-* exploits for all services in folder [sploits](https://github.com/HackerDom/phdctf-2017/tree/master/sploits/)
-* writeups with vulnerabilities and exploitation description for all services in folder [writeups](https://github.com/HackerDom/phdctf-2017/tree/master/writeups/)
+* source of all services in folder [services/](https://github.com/HackerDom/phdctf-2017/tree/master/services/)
+* checkers for [checksystem](https://github.com/Hackerdom/checksystem) in folder [checkers/](checkers/)
+* exploits for all services in folder [sploits/](https://github.com/HackerDom/phdctf-2017/tree/master/sploits/)
+* writeups with vulnerabilities and exploitation description for all services in folder [writeups/](https://github.com/HackerDom/phdctf-2017/tree/master/writeups/)
 
 This CTF is bring to you by these amazing guys:
 
