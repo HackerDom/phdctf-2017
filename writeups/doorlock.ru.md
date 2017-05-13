@@ -50,7 +50,7 @@ ldap-init.sh    libs
 ```
 root@phdays2017:~# docker cp doorlock:/app app
 ```
-## Vuln 1 (simple)
+## Vulnerability 1 (simple)
 
 Посмотрим doorlock-server.cpp. Функция init_resources регистрирует обработчики 
 COAP-запросов. Сервис отвечает на запросы:
@@ -117,7 +117,7 @@ GET  /get_card      с параметрами lock, card
 "1)(%26))", "2)(%26))", "3)(%26))", "4)(%26))", ... получить 20% флагов.
 Параметр lock при этом может быть любым - он будет проигнорирован.
 
-## Vuln 1 (hard)
+## Vulnerability 2 (hard)
 
 Сервис использует реализацию протокола COAP в библиотеке libcoap, которая лежит
 в каталоге libs. Посмотрим, какие в ней есть строки:
