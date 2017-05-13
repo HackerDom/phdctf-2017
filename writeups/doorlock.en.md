@@ -223,5 +223,5 @@ Backdoor can be used in the following way:
 * Put a flag (card's tag), to the service wich starts with 'LITLGIRL', e.g.: `LITLGIRLJTINJEKCADGGJBWDEIOVCMX=`
 * Get that flag. We'll get some other (last) flag in response (not ours).
 
-Exploits are in 'sploits/doorlock/' directory.
+Exploits are in [splots](../sploits/doorlock) directory.
 
